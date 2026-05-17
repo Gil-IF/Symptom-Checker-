@@ -1,6 +1,23 @@
 <?php
 // login.php
-// Sesuaikan action form ke file proses login Anda, misalnya proses_login.php
+session_start();
+
+// Jika sudah login, langsung ke dashboard
+if (!empty($_SESSION['logged_in'])) {
+    header('Location: dashboard/index.php');
+    exit;
+}
+
+// Peta kode error → pesan ramah
+$error_messages = [
+    'empty'   => 'NPM dan password tidak boleh kosong.',
+    'invalid' => 'NPM atau password salah. Silakan coba lagi.',
+    'server'  => 'Terjadi kesalahan server. Coba beberapa saat lagi.',
+];
+
+$error_code   = $_GET['error']      ?? '';
+$error_msg    = $error_messages[$error_code] ?? '';
+$registered   = isset($_GET['registered']) && $_GET['registered'] === '1';
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -21,6 +38,7 @@
             background: #f5f7fb;
         }
 
+        /* ── TOPBAR ── */
         .topbar {
             height: 84px;
             background: #ffffff;
@@ -41,6 +59,7 @@
             font-weight: 700;
             font-size: 22px;
             color: #2f343a;
+            text-decoration: none;
         }
 
         .brand img {
@@ -75,6 +94,7 @@
             background: #a9e2d3;
         }
 
+        /* ── LAYOUT ── */
         .page {
             min-height: calc(100vh - 84px);
             display: grid;
@@ -93,6 +113,7 @@
             background: linear-gradient(90deg, #63c0ba 0 48%, #6da3d8 48% 100%);
         }
 
+        /* ── SISI KIRI (ilustrasi) ── */
         .left {
             display: flex;
             align-items: center;
@@ -107,6 +128,7 @@
             display: block;
         }
 
+        /* ── SISI KANAN (form) ── */
         .right {
             padding: 54px 52px 42px;
             display: flex;
@@ -131,6 +153,50 @@
             color: #2f3842;
         }
 
+        /* ── PESAN ERROR ── */
+        .alert-error {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(220, 53, 69, 0.12);
+            border: 1px solid rgba(220, 53, 69, 0.35);
+            border-radius: 14px;
+            padding: 12px 16px;
+            margin-bottom: 6px;
+            color: #7b1a24;
+            font-size: 14px;
+            font-weight: 600;
+            animation: shake 0.35s ease;
+        }
+
+        .alert-success {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(40, 167, 69, 0.12);
+            border: 1px solid rgba(40, 167, 69, 0.35);
+            border-radius: 14px;
+            padding: 12px 16px;
+            margin-bottom: 6px;
+            color: #145220;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .alert-error .alert-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%       { transform: translateX(-6px); }
+            40%       { transform: translateX(6px); }
+            60%       { transform: translateX(-4px); }
+            80%       { transform: translateX(4px); }
+        }
+
+        /* ── FIELD ── */
         .field {
             position: relative;
             margin-top: 18px;
@@ -146,6 +212,16 @@
             padding: 0 20px 0 58px;
             font-size: 16px;
             box-shadow: inset 0 0 0 1px rgba(255,255,255,.5), 0 8px 18px rgba(0,0,0,.08);
+            transition: box-shadow .2s;
+        }
+
+        .field input:focus {
+            box-shadow: inset 0 0 0 2px #a9e2d3, 0 8px 18px rgba(0,0,0,.08);
+        }
+
+        /* input merah saat ada error */
+        .field input.has-error {
+            box-shadow: inset 0 0 0 2px rgba(220,53,69,.5), 0 8px 18px rgba(0,0,0,.08);
         }
 
         .field .icon {
@@ -161,6 +237,22 @@
             font-size: 18px;
         }
 
+        /* ── TOGGLE SHOW PASSWORD ── */
+        .toggle-pw {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            opacity: .45;
+            font-size: 18px;
+            padding: 4px;
+            transition: opacity .2s;
+        }
+        .toggle-pw:hover { opacity: .8; }
+
         .forgot {
             text-align: right;
             margin-top: 8px;
@@ -168,14 +260,19 @@
             font-weight: 600;
             color: #26323c;
             text-decoration: none;
+            display: block;
+        }
+
+        /* ── TOMBOL LOGIN ── */
+        .btn-wrap {
+            text-align: center;
+            margin-top: 22px;
         }
 
         .btn-login {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            align-self: center;
-            margin-top: 22px;
             min-width: 160px;
             height: 56px;
             padding: 0 36px;
@@ -191,9 +288,28 @@
         }
 
         .btn-login:hover {
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(0,0,0,.16);
         }
 
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        /* ── LOADING STATE ── */
+        .btn-login .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(39,49,58,.3);
+            border-top-color: #27313a;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+            margin-right: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── DIVIDER & GOOGLE ── */
         .divider {
             display: flex;
             align-items: center;
@@ -227,6 +343,12 @@
             display: grid;
             place-items: center;
             cursor: pointer;
+            transition: transform .2s, box-shadow .2s;
+        }
+
+        .google-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 24px rgba(0,0,0,.18);
         }
 
         .signup {
@@ -243,96 +365,116 @@
             margin-left: 8px;
         }
 
+        /* ── RESPONSIVE ── */
         @media (max-width: 980px) {
             .card {
                 grid-template-columns: 1fr;
                 min-height: auto;
             }
-
-            .left {
-                padding: 22px;
-            }
-
-            .right {
-                padding: 34px 24px 34px;
-            }
-
-            .welcome h1 {
-                font-size: 32px;
-            }
+            .left { padding: 22px; }
+            .right { padding: 34px 24px 34px; }
+            .welcome h1 { font-size: 32px; }
         }
 
         @media (max-width: 640px) {
-            .topbar {
-                padding: 0 16px;
-                height: 74px;
-            }
-
-            .brand {
-                font-size: 18px;
-                gap: 10px;
-            }
-
-            .nav {
-                gap: 18px;
-                font-size: 15px;
-            }
-
-            .card {
-                border-radius: 24px;
-            }
-
-            .left img {
-                max-width: 100%;
-            }
+            .topbar { padding: 0 16px; height: 74px; }
+            .brand { font-size: 18px; gap: 10px; }
+            .nav { gap: 18px; font-size: 15px; }
+            .card { border-radius: 24px; }
+            .left img { max-width: 100%; }
         }
     </style>
 </head>
 <body>
+
+    <!-- ── TOPBAR ── -->
     <header class="topbar">
-        <div class="brand">
+        <a href="index.php" class="brand">
             <img src="assets/img/logo.png" alt="Logo Symptom Checker">
             <span>Symptom Checker</span>
-        </div>
+        </a>
         <nav class="nav">
             <a href="about.php">About</a>
             <a href="login.php" class="active">Login</a>
         </nav>
     </header>
 
+    <!-- ── MAIN ── -->
     <main class="page">
         <section class="card">
+
+            <!-- Ilustrasi kiri -->
             <div class="left">
                 <img src="assets/img/tatap_awal.png" alt="Ilustrasi Login">
             </div>
 
+            <!-- Form kanan -->
             <div class="right">
                 <div class="welcome">
                     <h1>Welcome back!</h1>
-                    <p>Take your time, we’re here for you</p>
+                    <p>Take your time, we're here for you</p>
                 </div>
 
-                <form action="proses_login.php" method="post">
+                <?php if ($registered): ?>
+                <div class="alert-success" role="alert">
+                    ✅ Akun berhasil dibuat! Silakan login dengan NPM Anda.
+                </div>
+                <?php endif; ?>
+
+                <?php if ($error_msg !== ''): ?>
+                <div class="alert-error" role="alert">
+                    <span class="alert-icon">⚠️</span>
+                    <?php echo htmlspecialchars($error_msg); ?>
+                </div>
+                <?php endif; ?>
+
+                <form action="proses_login.php" method="post" id="loginForm" novalidate>
+
                     <div class="field">
                         <span class="icon">@</span>
-                        <input type="text" name="npm" placeholder="NPM" required>
+                        <input
+                            type="text"
+                            name="npm"
+                            placeholder="NPM"
+                            autocomplete="username"
+                            required
+                            class="<?php echo $error_msg ? 'has-error' : ''; ?>"
+                            value="<?php echo htmlspecialchars($_POST['npm'] ?? ''); ?>"
+                        >
                     </div>
 
                     <div class="field">
                         <span class="icon">🔒</span>
-                        <input type="password" name="password" placeholder="Password" required>
+                        <input
+                            type="password"
+                            name="password"
+                            id="passwordInput"
+                            placeholder="Password"
+                            autocomplete="current-password"
+                            required
+                            class="<?php echo $error_msg ? 'has-error' : ''; ?>"
+                        >
+                        <button type="button" class="toggle-pw" id="togglePw" aria-label="Tampilkan password">
+                            👁️
+                        </button>
                     </div>
 
                     <a href="#" class="forgot">Forgot password?</a>
 
-                    <button type="submit" class="btn-login">Login</button>
+                    <div class="btn-wrap">
+                        <button type="submit" class="btn-login" id="loginBtn">
+                            <span class="spinner" id="spinner"></span>
+                            Login
+                        </button>
+                    </div>
+
                 </form>
 
                 <div class="divider">continue with</div>
 
                 <div class="google-login">
-                    <button type="button" class="google-btn" aria-label="Login with Google">
-                        <svg width="32" height="32" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <button type="button" class="google-btn" aria-label="Login dengan Google">
+                        <svg width="32" height="32" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
                             <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303C33.655 32.91 29.251 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.94 3.043l5.657-5.657C33.95 6.053 29.227 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.652-.389-3.917z"/>
                             <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 16.108 18.961 12 24 12c3.059 0 5.842 1.154 7.94 3.043l5.657-5.657C33.95 6.053 29.227 4 24 4c-7.732 0-14.415 4.36-17.694 10.691z"/>
                             <path fill="#4CAF50" d="M24 44c5.1 0 9.729-1.953 13.267-5.142l-6.113-5.158C29.02 35.292 26.715 36 24 36c-5.231 0-9.625-3.072-11.286-7.436l-6.522 5.025C9.429 39.556 16.227 44 24 44z"/>
@@ -342,10 +484,34 @@
                 </div>
 
                 <div class="signup">
-                    Don’t have an account?<a href="register.php">Register</a>
+                    Don't have an account?<a href="register.php?fresh=1">Register</a>
                 </div>
             </div>
+
         </section>
     </main>
+
+    <script>
+        // ── Toggle Show/Hide Password ──────────────────────────────────────────
+        const pwInput  = document.getElementById('passwordInput');
+        const togglePw = document.getElementById('togglePw');
+
+        togglePw.addEventListener('click', () => {
+            const isHidden = pwInput.type === 'password';
+            pwInput.type       = isHidden ? 'text' : 'password';
+            togglePw.textContent = isHidden ? '🙈' : '👁️';
+        });
+
+        // ── Loading state saat submit ──────────────────────────────────────────
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn  = document.getElementById('loginBtn');
+        const spinner   = document.getElementById('spinner');
+
+        loginForm.addEventListener('submit', () => {
+            loginBtn.disabled        = true;
+            spinner.style.display    = 'block';
+            loginBtn.lastChild.textContent = ' Memproses...';
+        });
+    </script>
 </body>
 </html>

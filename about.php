@@ -125,29 +125,47 @@ $logo_path = "assets/img/logo.png";
     }
 
     /* ── MAIN WRAPPER ── */
-    .page-wrapper {
-      padding: 0 1.5rem 3rem;
-      max-width: 1100px;
-      margin: 0 auto;
-    }
+.page-wrapper {
+  padding: 0 3rem 3rem;
+  max-width: 1500px;
+  margin: 0 auto;
+}
 
-    /* ── HERO CARD ── */
-    .hero-card {
-      background: linear-gradient(135deg, var(--blue-main) 0%, var(--blue-dark) 100%);
-      border-radius: 20px;
-      padding: 3rem 3rem 0;
-      display: flex;
-      align-items: flex-end;
-      gap: 2rem;
-      overflow: hidden;
-      position: relative;
-      min-height: 360px;
-    }
+.hero-card {
+  background: linear-gradient(135deg, var(--blue-main) 0%, var(--blue-dark) 100%);
+  border-radius: 20px;
+  padding: 3rem 4rem 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 2rem;
+  overflow: hidden;
+  position: relative;
+  min-height: 560px;
+  width: 100%;
+}
 
+.hero-illustration {
+  flex-shrink: 0;
+  width: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  padding-top: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.hero-illustration img {
+  width: 300px;
+  height: 300px;
+  object-fit: contain;
+  filter: drop-shadow(0px 16px 28px rgba(0,0,0,0.25));
+}
     /* Teks kiri */
     .hero-text {
       flex: 1;
-      padding-bottom: 3.5rem;
+      padding-bottom: 9.5rem;
       position: relative;
       z-index: 2;
     }
@@ -161,7 +179,7 @@ $logo_path = "assets/img/logo.png";
     }
 
     .hero-text p {
-      font-size: 0.95rem;
+      font-size: 1.50rem;
       line-height: 1.85;
       color: rgba(255,255,255,0.93);
       text-align: justify;
@@ -169,20 +187,28 @@ $logo_path = "assets/img/logo.png";
     }
 
     /* Ilustrasi kanan */
-    .hero-illustration {
+     .hero-illustration {
       flex-shrink: 0;
-      width: 220px;
+      width: 300px;
       display: flex;
-      align-items: flex-end;
+      align-items: flex-start;
       justify-content: center;
+      padding-top: 1rem;
       position: relative;
       z-index: 2;
+    }
+ 
+    .hero-illustration img {
+      width: 280px;
+      height: 280px;
+      object-fit: contain;
+      filter: drop-shadow(0px 16px 28px rgba(0,0,0,0.25));
     }
 
     /* SVG Heart+Brain illustration */
     .heart-brain-svg {
-      width: 200px;
-      height: 200px;
+      width: 400px;
+      height: 400px;
       filter: drop-shadow(4px 6px 12px rgba(0,0,0,0.18));
     }
 
