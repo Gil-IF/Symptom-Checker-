@@ -271,7 +271,7 @@
     </header>
 
     <!-- ========== NAVIGASI DRAWER ========== -->
-    <?php include 'navigasi.php'; ?>   <!-- ✅ sekarang benar, satu folder -->
+    <?php include 'navigasi.php'; ?>   
 
     <!-- ========== KONTEN UTAMA ========== -->
     <div class="main-content">

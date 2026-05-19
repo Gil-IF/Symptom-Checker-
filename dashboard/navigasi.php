@@ -6,9 +6,8 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-$npm = $_SESSION['npm'] ?? '240810xxxxxx';
-$nama_panggilan = $_SESSION['nama_panggilan'] ?? 'Zeeka';
-$email = $_SESSION['email'] ?? 'zeeka@gmail.com';
+$npm = $_SESSION['npm'];
+$nama_user = $_SESSION['nama_panggilan'] ?? $npm;
 $avatar = $_SESSION['avatar'] ?? 'assets/img/avatar.png';
 ?>
 
@@ -195,15 +194,14 @@ $avatar = $_SESSION['avatar'] ?? 'assets/img/avatar.png';
     <div class="profile-box">
       <img src="<?php echo htmlspecialchars($avatar); ?>" alt="Avatar pengguna">
       <div class="profile-info">
-        <div class="name"><?php echo htmlspecialchars($nama_panggilan); ?></div>
-        <div class="mail"><?php echo htmlspecialchars($email); ?></div>
+        <div class="name"><?php echo htmlspecialchars($nama_user); ?></div>
       </div>
     </div>
   </div>
 
   <ul class="drawer-menu">
-    <li><a href="profile.php"><span class="icon">👤</span>Profile</a></li>
-    <li><a href="index.php" class="active"><span class="icon">🏠</span>Home</a></li>
+    <li><a href="../dashboard/profile.php"><span class="icon">👤</span>Profile</a></li>
+    <li><a href="../dashboard/index.php" class="active"><span class="icon">🏠</span>Home</a></li>
     <li><a href="../skrining/index.php"><span class="icon">📝</span>Start Checking</a></li>
     <li><a href="../riwayat/index.php"><span class="icon">⏳</span>History</a></li>
     <li><a href="../about.php"><span class="icon">❓</span>About</a></li>
