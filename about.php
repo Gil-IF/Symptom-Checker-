@@ -110,9 +110,9 @@ $is_logged_in = isset($_SESSION['npm']);
 
         /* ── PAGE WRAPPER ────────────────────────────────── */
         .page-wrapper {
-            max-width: 1060px;
+            max-width: 1660px;
             margin: 0 auto;
-            padding: 0 20px 40px;
+            padding: 0 1px 10px;
         }
 
         /* ═══════════════════════════════════════════════════
@@ -137,14 +137,14 @@ $is_logged_in = isset($_SESSION['npm']);
         }
 
         .hero-text h1 {
-            font-size: 28px;
+            font-size: 40px;
             font-weight: 900;
             color: var(--white);
             margin-bottom: 16px;
         }
 
         .hero-text p {
-            font-size: 14px;
+            font-size: 20px;
             line-height: 1.9;
             color: rgba(255,255,255,0.93);
             text-align: justify;
@@ -152,7 +152,7 @@ $is_logged_in = isset($_SESSION['npm']);
 
         .hero-illus {
             flex-shrink: 0;
-            width: 200px;
+            width: 200  px;
             z-index: 2;
             display: flex;
             align-items: flex-start;
@@ -161,8 +161,8 @@ $is_logged_in = isset($_SESSION['npm']);
         }
 
         .hero-illus img {
-            width: 180px;
-            height: 180px;
+            width: 400px;
+            height: 400px;
             object-fit: contain;
             filter: drop-shadow(0 10px 22px rgba(0,0,0,0.22));
         }
@@ -190,20 +190,20 @@ $is_logged_in = isset($_SESSION['npm']);
 
         .why-illus {
             flex-shrink: 0;
-            width: 200px;
+            width: 500px;
             display: flex;
             justify-content: center;
         }
 
         .why-illus img {
-            width: 180px;
+            width: 500px;
             height: auto;
             object-fit: contain;
             filter: drop-shadow(0 8px 16px rgba(0,0,0,0.2));
         }
 
         .why-text p {
-            font-size: 14px;
+            font-size: 20px;
             line-height: 2;
             color: rgba(255,255,255,0.95);
             text-align: justify;
@@ -222,14 +222,14 @@ $is_logged_in = isset($_SESSION['npm']);
         ═══════════════════════════════════════════════════ */
         .how-section {
             background: linear-gradient(160deg, var(--teal-light) 0%, var(--blue-light) 100%);
-            padding: 40px;
+            padding: 30px;
             position: relative;
             overflow: hidden;
         }
 
         .how-section h2 {
             text-align: center;
-            font-size: 22px;
+            font-size: 32px;
             font-weight: 900;
             color: var(--white);
             margin-bottom: 24px;
@@ -238,27 +238,27 @@ $is_logged_in = isset($_SESSION['npm']);
         .steps-list {
             display: flex;
             flex-direction: column;
-            gap: 14px;
-            max-width: 700px;
+            gap: 34px;
+            max-width: 1000px;
             margin: 0 auto;
         }
 
         .step-item {
             background: var(--purple-card);
             border-radius: 14px;
-            padding: 16px 20px;
+            padding: 6px 10px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
 
         .step-item h3 {
-            font-size: 14px;
+            font-size: 24px;
             font-weight: 900;
             color: var(--dark);
             margin-bottom: 6px;
         }
 
         .step-item p {
-            font-size: 13px;
+            font-size: 20px;
             line-height: 1.65;
             color: rgba(44,62,80,0.8);
         }
@@ -275,14 +275,14 @@ $is_logged_in = isset($_SESSION['npm']);
         }
 
         .cta-section h2 {
-            font-size: 22px;
+            font-size: 32px;
             font-weight: 900;
             color: var(--dark);
             margin-bottom: 10px;
         }
 
         .cta-section p {
-            font-size: 14px;
+            font-size: 20px;
             color: #666;
             margin-bottom: 20px;
             line-height: 1.65;
@@ -297,8 +297,8 @@ $is_logged_in = isset($_SESSION['npm']);
         }
 
         .cta-logo img {
-            width: 56px;
-            height: 56px;
+            width: 156px;
+            height: 156px;
             object-fit: contain;
         }
 
@@ -395,14 +395,16 @@ $is_logged_in = isset($_SESSION['npm']);
         <!-- ══ SECTION 1 : HERO ══ -->
         <div class="hero-card">
             <div class="hero-text">
-                <h1>About Us</h1>
+                <h1>Tentang Kami</h1>
                 <p>
-                    Symptom Checker is a digital platform designed to help users identify early signs of mental health
-                    conditions based on the symptoms they are experiencing. Through a simple screening process, users
-                    answer a series of questions about their emotional state, sleep patterns, anxiety levels, mood, and
-                    daily habits. Based on these answers, the system will provide an initial overview of the possible
-                    psychological condition they are experiencing, along with guidance or recommendations for initial
-                    steps the user can take.
+            Symptom Checker adalah platform digital yang membantu pengguna mengenali 
+            tingkat depresi, kecemasan, dan stres menggunakan kuesioner standar 
+            <strong>DASS‑42</strong> (<em>Depression Anxiety Stress Scales</em>). 
+            Melalui proses skrining sederhana, pengguna menjawab 42 pertanyaan yang 
+            mengukur kondisi emosional, pola tidur, tingkat kecemasan, suasana hati, 
+            dan kebiasaan sehari‑hari. Sistem kemudian menganalisis jawaban dan 
+            memberikan gambaran tingkat keparahan masing‑masing aspek dari normal, ringan, sedang, 
+            berat, atau sangat berat beserta rekomendasi langkah awal yang dapat diambil.
                 </p>
             </div>
 
@@ -428,12 +430,12 @@ $is_logged_in = isset($_SESSION['npm']);
 
             <div class="why-text">
                 <p>
-                    Despite easy access to information online, many people experience confusion when trying to understand
-                    their mental health. A single symptom can often point to multiple possible conditions, leading to
-                    conflicting information and even undue anxiety. Furthermore, not everyone has easy access to direct
-                    consultation with a professional due to financial constraints, time constraints, or fear of the social
-                    stigma that often surrounds mental health issues. This is the foundation for the introduction of the
-                    Symptom Checker, a more practical, easy-to-understand, and accessible initial screening tool.
+                    Meskipun akses informasi daring sangat mudah, banyak orang merasa bingung saat mencoba memahami
+                    kesehatan mental mereka. Satu gejala saja sering kali dapat mengarah pada berbagai kemungkinan kondisi, yang menyebabkan
+                    informasi yang bertentangan dan bahkan kecemasan yang berlebihan. Selain itu, tidak semua orang memiliki akses mudah untuk
+                    berkonsultasi langsung dengan seorang profesional karena kendala finansial, keterbatasan waktu, atau ketakutan akan
+                    stigma sosial yang sering melekat pada masalah kesehatan mental. Hal inilah yang menjadi dasar diperkenalkannya
+                    Symptom Checker, sebuah alat skrining awal yang lebih praktis, mudah dipahami, dan dapat diakses.
                 </p>
             </div>
 
@@ -447,42 +449,45 @@ $is_logged_in = isset($_SESSION['npm']);
             </div>
         </div>
 
-        <!-- ══ SECTION 3 : HOW IT WORKS ══ -->
-        <div class="how-section">
-            <h2>How This System Works</h2>
-            <div class="steps-list">
-                <div class="step-item">
-                    <h3>1. Answer Questions</h3>
-                    <p>Users complete several questions regarding their emotional state, sleep patterns, stress levels, anxiety, and daily habits.</p>
-                </div>
-                <div class="step-item">
-                    <h3>2. Answer Analysis by the System</h3>
-                    <p>Processes the answers based on structured mental health screening indicators.</p>
-                </div>
-                <div class="step-item">
-                    <h3>3. Screening Results</h3>
-                    <p>Users will obtain an initial overview of their possible mental health condition.</p>
-                </div>
-                <div class="step-item">
-                    <h3>4. Recommendations</h3>
-                    <p>The system provides suggestions for initial steps to take, including a recommendation to consult a professional if necessary.</p>
-                </div>
-            </div>
+ <!-- ══ SECTION 3 : HOW IT WORKS ══ -->
+<div class="how-section">
+    <h2>Cara Kerja Sistem</h2>
+    <div class="steps-list">
+        <div class="step-item">
+            <h3>1. Isi Kuesioner DASS‑42</h3>
+            <p>Pengguna menjawab 42 pertanyaan yang mengukur depresi, kecemasan, dan stres.</p>
         </div>
-
-        <!-- ══ SECTION 4 : CTA ══ -->
-        <div class="cta-section">
-            <h2>Recognize Your Condition Early</h2>
-            <p>Take a few minutes to understand what you're feeling and get appropriate initial guidance.</p>
-            <div class="cta-logo">
-                <img src="assets/img/logo.png" alt="Logo Symptom Checker">
-                <span>Symptom Checker</span>
-            </div>
-            <?php if (!$is_logged_in): ?>
-                <a href="login.php" class="cta-btn">Start Now</a>
-            <?php endif; ?>
+        <div class="step-item">
+            <h3>2. Analisis oleh Sistem</h3>
+            <p>Sistem menghitung skor berdasarkan jawaban dan mengkategorikan tingkat keparahan.</p>
         </div>
+        <div class="step-item">
+            <h3>3. Hasil Skrining</h3>
+            <p>Pengguna memperoleh gambaran tingkat depresi, kecemasan, dan stres beserta interpretasinya.</p>
+        </div>
+        <div class="step-item">
+            <h3>4. Rekomendasi</h3>
+            <p>Sistem memberikan saran langkah awal, termasuk anjuran konsultasi profesional jika diperlukan.</p>
+        </div>
+    </div>
+</div>
 
-    </div><!-- /page-wrapper -->
-</body>
-</html>
+<!-- ══ SECTION 4 : CTA ══ -->
+<div class="cta-section">
+    <h2>Kenali Kondisi Anda Lebih Awal</h2>
+    <p>
+        Luangkan beberapa menit untuk menjawab 42 pertanyaan 
+        <strong>DASS‑42</strong> dan dapatkan gambaran awal tentang 
+        tingkat depresi, kecemasan, serta stres yang mungkin Anda alami.
+    </p>
+    <div class="cta-logo">
+        <img src="assets/img/logo.png" alt="Logo Symptom Checker">
+        <span>Symptom Checker</span>
+    </div>
+
+    <?php if (!$is_logged_in): ?>
+        <a href="login.php" class="cta-btn">Mulai Sekarang</a>
+    <?php else: ?>
+        <a href="skrining/index.php" class="cta-btn">Mulai Skrining</a>
+    <?php endif; ?>
+</div>

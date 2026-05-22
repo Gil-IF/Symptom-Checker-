@@ -11,7 +11,7 @@ if (!isset($_SESSION['npm'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checking - Symptom Checker</title>
+    <title>Skrining – Symptom Checker</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -23,7 +23,6 @@ if (!isset($_SESSION['npm'])) {
             color: #2f3137;
         }
 
-        /* Layar penuh biru */
         .screen {
             background: #6ea3d9;
             min-height: 100vh;
@@ -50,7 +49,7 @@ if (!isset($_SESSION['npm'])) {
             display: flex;
             flex-direction: column;
             width: 100%;
-            max-width: 900px;
+            max-width: 1000px;
         }
 
         .header {
@@ -58,7 +57,7 @@ if (!isset($_SESSION['npm'])) {
             justify-content: center;
             align-items: center;
             gap: 16px;
-            margin-bottom: 60px;
+            margin-bottom: 40px;
         }
 
         .header img {
@@ -75,18 +74,37 @@ if (!isset($_SESSION['npm'])) {
         .content {
             flex: 1;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             text-align: center;
             padding: 0 20px;
-            margin-bottom: 40px;
+            margin-bottom: 50px;
         }
 
         .content p {
             font-size: 24px;
             line-height: 1.7;
             font-weight: 500;
-            max-width: 700px;
+            max-width: 1200px;
+            margin-bottom: 24px;
+        }
+
+        .warning {
+            background: #fff8e1;
+            border-left: 6px solid #f9a825;
+            border-radius: 12px;
+            padding: 20px 24px;
+            text-align: left;
+            font-size: 16px;
+            line-height: 1.6;
+            max-width: 1000px;
+            width: 100%;
+            color: #4e3b0e;
+        }
+
+        .warning strong {
+            color: #c77800;
         }
 
         .actions {
@@ -125,13 +143,14 @@ if (!isset($_SESSION['npm'])) {
             .content { padding: 0 10px; }
             .content p { font-size: 20px; }
             .btn { min-width: 120px; height: 50px; font-size: 18px; }
+            .warning { font-size: 14px; padding: 16px; }
         }
     </style>
 </head>
 <body>
 
     <section class="screen">
-        <div class="breadcrumb">Checking</div>
+        <div class="breadcrumb">  </div>
 
         <div class="card">
             <div class="header">
@@ -141,15 +160,18 @@ if (!isset($_SESSION['npm'])) {
 
             <div class="content">
                 <p>
-                    Take a moment to understand your condition.<br>
-                    Answer each question honestly, so the results are
-                    more in line with how you feel.
+                    Luangkan waktu sejenak untuk memahami kondisi Anda saat ini.<br>
+                    Jawab setiap pertanyaan dengan jujur agar hasilnya benar-benar menggambarkan apa yang Anda rasakan.
                 </p>
+
+                <div class="warning">
+                    <strong>Perhatian:</strong> Hasil skrining ini hanyalah indikasi awal dan tidak menggantikan peran ahli. Jika hasil skrining Anda menunjukkan tingkat berat hingga sangat berat, kami sangat menyarankan Anda untuk segera berkonsultasi dengan tenaga profesional.
+                </div>
             </div>
 
             <div class="actions">
-                <a href="../dashboard/index.php" class="btn">Back</a>
-                <a href="step.php?no=1" class="btn">Next</a>
+                <a href="../dashboard/index.php" class="btn">Kembali</a>
+                <a href="step.php?no=1" class="btn">Lanjut</a>
             </div>
         </div>
     </section>

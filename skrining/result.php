@@ -3,20 +3,30 @@
 session_start();
 require_once '../config/database.php';
 
-// Pastikan user sudah login
-if (!isset($_SESSION['npm']) || !isset($_SESSION['id_mahasiswa'])) {
+/*
+|--------------------------------------------------------------------------
+| 1. Autentikasi & Otorisasi
+|--------------------------------------------------------------------------
+*/
+$isMahasiswa = isset($_SESSION['npm']) && isset($_SESSION['id_mahasiswa']);
+$isAdmin     = isset($_SESSION['admin']) || isset($_SESSION['id_admin']);
+
+if (!$isMahasiswa && !$isAdmin) {
     header('Location: ../login.php');
     exit;
 }
 
+// Ambil & validasi format ID skrining (contoh: IDS001)
 $id_skrining = $_GET['id_skrining'] ?? '';
-
-// Validasi format ID
 if (!preg_match('/^IDS\d{3}$/', $id_skrining)) {
     die('ID skrining tidak valid.');
 }
 
-// Ambil data header skrining + data mahasiswa
+/*
+|--------------------------------------------------------------------------
+| 2. Ambil data hasil skrining + data mahasiswa
+|--------------------------------------------------------------------------
+*/
 $stmt = $pdo->prepare("
     SELECT
         s.id_skrining,
@@ -29,33 +39,39 @@ $stmt = $pdo->prepare("
         m.nama
     FROM skrining s
     JOIN mahasiswa m ON m.id_mahasiswa = s.id_mahasiswa
-    WHERE s.id_skrining = :id_skrining
+    WHERE s.id_skrining = :id
 ");
-$stmt->execute([':id_skrining' => $id_skrining]);
+$stmt->execute([':id' => $id_skrining]);
 $hasil = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$hasil) {
     die('Data hasil skrining tidak ditemukan.');
 }
 
-// ---------------------------------------------------------------------------
-// Otorisasi: hanya mahasiswa pemilik data atau admin yang boleh melihat
-// ---------------------------------------------------------------------------
-$isAdmin   = ($_SESSION['role'] ?? '') === 'admin';
-$isPemilik = ($_SESSION['id_mahasiswa'] === $hasil['id_mahasiswa']);
-if (!$isAdmin && !$isPemilik) {
-    header('Location: ../dashboard/index.php');
-    exit;
+/*
+|--------------------------------------------------------------------------
+| 3. Otorisasi kepemilikan data
+|--------------------------------------------------------------------------
+*/
+// Mahasiswa hanya boleh melihat datanya sendiri
+if ($isMahasiswa && $hasil['id_mahasiswa'] != $_SESSION['id_mahasiswa']) {
+    // Jika bukan admin dan bukan pemilik, akses ditolak
+    die('Akses ditolak.');
 }
+// Admin boleh melihat data siapa pun
 
-// ---------------------------------------------------------------------------
-// Hitung skor total
-// ---------------------------------------------------------------------------
+/*
+|--------------------------------------------------------------------------
+| 4. Hitung skor total
+|--------------------------------------------------------------------------
+*/
 $skorTotal = $hasil['skor_depresi'] + $hasil['skor_anxiety'] + $hasil['skor_stress'];
 
-// ---------------------------------------------------------------------------
-// Tentukan kategori untuk masing-masing subskala dari tabel kategori_subskala
-// ---------------------------------------------------------------------------
+/*
+|--------------------------------------------------------------------------
+| 5. Fungsi bantu: ambil kategori dari tabel kategori_subskala
+|--------------------------------------------------------------------------
+*/
 function getKategori(PDO $pdo, string $idSubskala, int $skor): string {
     $stmt = $pdo->prepare("
         SELECT nama_kategori
@@ -64,17 +80,18 @@ function getKategori(PDO $pdo, string $idSubskala, int $skor): string {
           AND :skor BETWEEN rentang_min AND rentang_max
     ");
     $stmt->execute([':id_subskala' => $idSubskala, ':skor' => $skor]);
-    $result = $stmt->fetchColumn();
-    return $result ?: 'Tidak diketahui';
+    return $stmt->fetchColumn() ?: 'Tidak diketahui';
 }
 
 $kategoriDepresi = getKategori($pdo, 'IDU001', $hasil['skor_depresi']);
 $kategoriAnxiety = getKategori($pdo, 'IDU002', $hasil['skor_anxiety']);
 $kategoriStress  = getKategori($pdo, 'IDU003', $hasil['skor_stress']);
 
-// ---------------------------------------------------------------------------
-// Ambil rekomendasi berdasarkan kategori
-// ---------------------------------------------------------------------------
+/*
+|--------------------------------------------------------------------------
+| 6. Ambil rekomendasi berdasarkan kategori
+|--------------------------------------------------------------------------
+*/
 $rekomendasi = [];
 try {
     $stmtRekom = $pdo->prepare("
@@ -93,18 +110,23 @@ try {
     ]);
     $rekomendasi = $stmtRekom->fetchAll(PDO::FETCH_COLUMN);
 } catch (Throwable $e) {
-    $rekomendasi = [];
+    // Biarkan $rekomendasi tetap array kosong
 }
 
-// Fungsi untuk memilih emoji
+/*
+|--------------------------------------------------------------------------
+| 7. Fungsi bantu: emoji berdasarkan kategori
+|--------------------------------------------------------------------------
+*/
 function getEmoji(string $kategori): string {
-    $k = strtolower($kategori);
-    if (str_contains($k, 'normal')) return '🙂';
-    if (str_contains($k, 'ringan')) return '😐';
-    if (str_contains($k, 'sedang')) return '😐';
-    if (str_contains($k, 'berat'))  return '😟';
-    if (str_contains($k, 'sangat berat')) return '😟';
-    return '😟';
+    return match (true) {
+        str_contains($kategori, 'Normal')       => '🙂',
+        str_contains($kategori, 'Ringan')       => '😐',
+        str_contains($kategori, 'Sedang')       => '😐',
+        str_contains($kategori, 'Berat')        => '😟',
+        str_contains($kategori, 'Sangat Berat') => '😟',
+        default                                 => '?',
+    };
 }
 ?>
 <!DOCTYPE html>
@@ -166,6 +188,24 @@ function getEmoji(string $kategori): string {
         }
         .rekomendasi h3 { margin-top: 0; }
         .rekomendasi ul { padding-left: 20px; }
+        
+        .warning {
+            background: #fff8e1;
+            border-left: 22px solid #f9a825;
+            border-radius: 22px;
+            padding: 20px 24px;
+            text-align: left;
+            font-size: 16px;
+            line-height: 1.6;
+            max-width: 730px;
+            width: 100%;
+            color: #4e3b0e;
+        }
+
+        .warning strong {
+            color: #c77800;
+        }
+
         .btn {
             display: inline-block;
             background: #a9e2d3;
@@ -217,6 +257,9 @@ function getEmoji(string $kategori): string {
             <?php endforeach; ?>
         </ul>
     </div>
+                <div class="warning">
+                    <strong>Perhatian:</strong> Hasil skrining ini hanyalah indikasi awal dan tidak menggantikan peran ahli. Jika hasil skrining Anda menunjukkan tingkat berat hingga sangat berat, kami sangat menyarankan Anda untuk segera berkonsultasi dengan tenaga profesional.
+                </div>
     <?php endif; ?>
 
     <div style="text-align: center;">

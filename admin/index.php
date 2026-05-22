@@ -141,25 +141,44 @@ try {
     $recent = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {}
 
-// Fungsi badge (bisa Anda ganti nanti dengan DASS‑42 naming)
+// Fungsi menentukan label badge berdasarkan data kategori
 function badge_level(array $row): string
 {
-    foreach (['kategori_depresi','kategori_anxiety','kategori_stress'] as $k) {
-        if (!empty($row[$k])) {
-            $val = strtolower((string)$row[$k]);
-            if (str_contains($val, 'berat')) return 'High Risk';
-            if (str_contains($val, 'sedang') || str_contains($val, 'ringan')) return 'Medium Risk';
+    // Prioritas: sangat berat > berat > sedang > ringan > normal
+    // Urutan pengecekan harus dari yang paling spesifik dulu!
+    $levelPriority = ['Sangat Berat', 'Berat', 'Sedang', 'Ringan', 'Normal'];
+    
+    foreach (['kategori_depresi', 'kategori_anxiety', 'kategori_stress'] as $key) {
+        if (!empty($row[$key])) {
+            $val = trim((string)$row[$key]);
+            // Bandingkan case‑insensitive
+            foreach ($levelPriority as $label) {
+                if (strcasecmp($val, $label) === 0) {
+                    // Konversi ke istilah dashboard (opsional: langsung kembalikan $label)
+                    return match ($label) {
+                        'Sangat Berat' => 'Danger',
+                        'Berat'        => 'High Risk',
+                        'Sedang'       => 'Medium Risk',
+                        'Ringan'       => 'Low Risk',
+                        'Normal'       => 'Safe',
+                    };
+                }
+            }
         }
     }
-    return 'Low Risk';
+    return 'Safe'; // fallback jika tidak ditemukan
 }
 
+// Fungsi mengembalikan kelas CSS untuk badge
 function badge_class(string $badge): string
 {
     return match ($badge) {
-        'High Risk' => 'danger',
-        'Medium Risk' => 'warn',
-        default => 'success',
+        'Danger'      => 'danger',   // Sangat Berat
+        'High Risk'   => 'danger',   // Berat
+        'Medium Risk' => 'warn',     // Sedang
+        'Low Risk'    => 'success',  // Ringan
+        'Safe'        => 'success',  // Normal
+        default       => 'success',
     };
 }
 ?>
@@ -344,14 +363,6 @@ function badge_class(string $badge): string
                 <h1>Hello, Admin 👋</h1>
                 <p>Welcome back to Symptom Checker Admin Dashboard</p>
             </div>
-            <div class="actions">
-                <div class="search">
-                    <span>🔎</span>
-                    <input type="text" placeholder="Search Something...">
-                </div>
-                <button class="icon-btn" aria-label="Notifications">🔔</button>
-                <button class="icon-btn" aria-label="Profile">👤</button>
-            </div>
         </section>
 
         <section class="cards">
@@ -447,23 +458,6 @@ function badge_class(string $badge): string
             </div>
             <!-- =================== END PANEL DISTRIBUSI =================== -->
         </section>
-
-        <section class="grid-2b">
-            <div class="panel">
-                <div class="panel-head">
-                    <h2>Risk Level Distribution</h2>
-                </div>
-                <div class="donut-wrap">
-                    <div style="width:180px;height:180px;">
-                        <canvas id="riskChart"></canvas>
-                    </div>
-                    <div class="legend">
-                        <div class="legend-item"><span class="legend-dot" style="background:#44c767"></span> Low Risk <b>&nbsp;<?= max(0, $totalScreening - $highRisk); ?></b></div>
-                        <div class="legend-item"><span class="legend-dot" style="background:#ffcc33"></span> Medium Risk <b>&nbsp;0</b></div>
-                        <div class="legend-item"><span class="legend-dot" style="background:#ff4d4d"></span> High Risk <b>&nbsp;<?= (int)$highRisk; ?></b></div>
-                    </div>
-                </div>
-            </div>
 
             <div class="panel">
                 <div class="panel-head">

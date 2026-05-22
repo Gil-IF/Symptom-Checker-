@@ -107,9 +107,9 @@ $registered   = isset($_GET['registered']) && $_GET['registered'] === '1';
         }
 
         .card {
-            width: min(1180px, 100%);
-            min-height: 670px;
-            border-radius: 32px;
+            width: min(1580px, 100%);
+            min-height: 770px;
+            border-radius: 102px;
             overflow: hidden;
             display: grid;
             grid-template-columns: 1.05fr .95fr;
@@ -117,21 +117,23 @@ $registered   = isset($_GET['registered']) && $_GET['registered'] === '1';
             background: linear-gradient(90deg, #63c0ba 0 48%, #6da3d8 48% 100%);
         }
 
-        /* ── SISI KIRI (ilustrasi) ── */
-        .left {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 28px;
-        }
+.left {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;                       /* ← hapus padding */
+    /* opsional: beri posisi relative */
+    position: relative;
+}
 
-        .left img {
-            width: 100%;
-            max-width: 520px;
-            height: auto;
-            display: block;
-        }
-
+.left img {
+    width: 100%;                      /* lebar penuh area kiri */
+    height: 100%;                     /* tinggi penuh area kiri */
+    object-fit: cover;                /* gambar mengisi tanpa distorsi */
+    display: block;
+    border-top-left-radius: 32px;     /* jika kartu punya radius 32px */
+    border-bottom-left-radius: 32px;
+}
         /* ── SISI KANAN (form) ── */
         .right {
             padding: 54px 52px 42px;
@@ -464,7 +466,7 @@ $registered   = isset($_GET['registered']) && $_GET['registered'] === '1';
                         </button>
                     </div>
 
-                    <a href="#" class="forgot">Forgot password?</a>
+                    <a href="forgot_password.php" class="forgot">Forgot password?</a>
 
                     <div class="btn-wrap">
                         <button type="submit" class="btn-login" id="loginBtn">

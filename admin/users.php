@@ -14,7 +14,7 @@ $adminName = $_SESSION['admin']['username'] ?? $_SESSION['admin_username'] ?? 'A
 $message = '';
 $error = '';
 
-// Proses tambah / edit user
+// Proses tambah / edit / reset password user
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $newId = 'IDM' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
 
                         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-                        $stmt = $pdo->prepare("INSERT INTO mahasiswa (id_mahasiswa, npm, nama, password) VALUES (?, ?, ?, ?)");
+                        $stmt = $pdo->prepare("INSERT INTO mahasiswa (id_mahasiswa, npm, nama, password, created_at) VALUES (?, ?, ?, ?, NOW())");
                         $stmt->execute([$newId, $npm, $nama, $hashedPassword]);
                         $message = 'Mahasiswa berhasil ditambahkan.';
                     }
@@ -78,6 +78,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Gagal menyimpan: ' . $e->getMessage();
             }
         }
+    } elseif ($action === 'reset_password') {
+        // Reset password oleh admin
+        $id_mahasiswa = $_POST['id_mahasiswa'] ?? '';
+        $new_password = $_POST['password'] ?? '';
+
+        if (empty($id_mahasiswa)) {
+            $error = 'ID mahasiswa tidak valid.';
+        } elseif (strlen($new_password) < 6) {
+            $error = 'Password baru minimal 6 karakter.';
+        } else {
+            try {
+                $stmt = $pdo->prepare("SELECT id_mahasiswa, nama FROM mahasiswa WHERE id_mahasiswa = ?");
+                $stmt->execute([$id_mahasiswa]);
+                $user = $stmt->fetch();
+                if (!$user) {
+                    $error = 'Mahasiswa tidak ditemukan.';
+                } else {
+                    $hashed = password_hash($new_password, PASSWORD_DEFAULT);
+                    $stmt = $pdo->prepare("UPDATE mahasiswa SET password = ? WHERE id_mahasiswa = ?");
+                    $stmt->execute([$hashed, $id_mahasiswa]);
+                    $message = 'Password untuk ' . htmlspecialchars($user['nama']) . ' berhasil direset.';
+                }
+            } catch (PDOException $e) {
+                $error = 'Gagal mereset password: ' . $e->getMessage();
+            }
+        }
     }
 }
 
@@ -85,7 +111,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
     $id = $_GET['id'];
     try {
-        // Cek apakah mahasiswa memiliki skrining
         $stmt = $pdo->prepare("SELECT COUNT(*) FROM skrining WHERE id_mahasiswa = ?");
         $stmt->execute([$id]);
         $count = $stmt->fetchColumn();
@@ -120,7 +145,7 @@ try {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* Gunakan CSS yang sama dengan dashboard admin, tambahan untuk tabel dan modal */
+        /* (CSS tetap sama seperti kode sebelumnya) */
         :root{
             --bg:#f3f3f5; --panel:#ffffff; --text:#2f3137; --muted:#7a7f87;
             --shadow:0 10px 26px rgba(0,0,0,.08); --sidebar:#ffffff;
@@ -173,6 +198,7 @@ try {
         .actions button,.actions a{background:none; border:none; cursor:pointer; font-size:18px; padding:4px 8px; border-radius:8px}
         .actions .edit-btn:hover{background:#e3f2fd}
         .actions .delete-btn:hover{background:#ffebee}
+        .actions .reset-btn:hover{background:#fff3e0}
 
         /* Modal */
         .modal-overlay{position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; z-index:1000; visibility:hidden; opacity:0; transition:.2s}
@@ -182,6 +208,7 @@ try {
         .form-group{margin-bottom:14px}
         .form-group label{display:block; font-weight:600; font-size:13px; margin-bottom:6px}
         .form-group input{width:100%; padding:12px 14px; border:1px solid #ddd; border-radius:12px; font-family:inherit; font-size:14px}
+        .form-group input[readonly]{background:#f0f0f0; color:#555}
         .form-actions{display:flex; gap:12px; justify-content:flex-end; margin-top:18px}
         @media (max-width:1200px){ .layout{grid-template-columns:1fr} .sidebar{position:relative;height:auto} }
         @media (max-width:720px){ .content{padding:16px} }
@@ -189,7 +216,7 @@ try {
 </head>
 <body>
 <div class="layout">
-    <!-- SIDEBAR (sama dengan dashboard) -->
+    <!-- SIDEBAR (sama dengan sebelumnya) -->
     <aside class="sidebar">
         <a href="index.php" class="brand">
             <img src="../assets/img/logo.png" alt="Logo Symptom Checker">
@@ -260,6 +287,8 @@ try {
                             <td class="actions">
                                 <button class="edit-btn" title="Edit"
                                     onclick='openEditModal(<?= json_encode($u); ?>)'>✏️</button>
+                                <button class="reset-btn" title="Reset Password"
+                                    onclick='openResetModal(<?= json_encode($u); ?>)'>🔑</button>
                                 <a href="?action=delete&id=<?= urlencode($u['id_mahasiswa']); ?>" 
                                    class="delete-btn" title="Hapus"
                                    onclick="return confirm('Yakin ingin menghapus <?= htmlspecialchars($u['nama']); ?>?')">🗑️</a>
@@ -273,7 +302,7 @@ try {
     </main>
 </div>
 
-<!-- MODAL TAMBAH / EDIT -->
+<!-- MODAL TAMBAH / EDIT (sebelumnya, tidak diubah) -->
 <div class="modal-overlay" id="userModal">
     <div class="modal">
         <h2 id="modalTitle">Tambah Mahasiswa</h2>
@@ -299,6 +328,37 @@ try {
             <div class="form-actions">
                 <button type="button" class="btn" onclick="closeModal()" style="background:#eee">Batal</button>
                 <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL RESET PASSWORD (baru) -->
+<div class="modal-overlay" id="resetModal">
+    <div class="modal">
+        <h2>🔑 Reset Password Mahasiswa</h2>
+        <form method="post" action="users.php">
+            <input type="hidden" name="action" value="reset_password">
+            <input type="hidden" name="id_mahasiswa" id="resetId">
+
+            <div class="form-group">
+                <label>NPM</label>
+                <input type="text" id="resetNpm" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>Nama</label>
+                <input type="text" id="resetNama" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="newPassword">Password Baru <small>(Min. 6 karakter)</small></label>
+                <input type="password" name="password" id="newPassword" placeholder="Masukkan password baru" minlength="6" required>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn" onclick="closeResetModal()" style="background:#eee">Batal</button>
+                <button type="submit" class="btn btn-primary">Reset Password</button>
             </div>
         </form>
     </div>
@@ -342,13 +402,30 @@ try {
         modal.classList.remove('active');
     }
 
+    // RESET MODAL
+    const resetModal = document.getElementById('resetModal');
+    const resetId = document.getElementById('resetId');
+    const resetNpm = document.getElementById('resetNpm');
+    const resetNama = document.getElementById('resetNama');
+    const newPassword = document.getElementById('newPassword');
+
+    function openResetModal(user) {
+        resetId.value = user.id_mahasiswa;
+        resetNpm.value = user.npm;
+        resetNama.value = user.nama;
+        newPassword.value = '';
+        resetModal.classList.add('active');
+    }
+
+    function closeResetModal() {
+        resetModal.classList.remove('active');
+    }
+
     // Tutup modal jika klik di luar
     window.onclick = function(event) {
         if (event.target === modal) closeModal();
+        if (event.target === resetModal) closeResetModal();
     }
-
-    // Tampilkan pesan sukses/error dari PHP (refresh halaman akan menampilkan)
-    // Jika ada error, otomatis buka modal? Bisa dikembangkan.
 </script>
 </body>
-</html> 
+</html>

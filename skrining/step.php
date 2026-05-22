@@ -6,9 +6,6 @@ session_start();
 |--------------------------------------------------------------------------
 | Cek login
 |--------------------------------------------------------------------------
-| Bisa dipakai untuk session lama (npm/id_mahasiswa)
-| maupun session baru (logged_in + role mahasiswa)
-|--------------------------------------------------------------------------
 */
 $isMahasiswaLogin =
     (isset($_SESSION['logged_in']) && ($_SESSION['role'] ?? '') === 'mahasiswa')
@@ -87,8 +84,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 |--------------------------------------------------------------------------
 | Ambil pertanyaan untuk halaman aktif
 |--------------------------------------------------------------------------
-| Schema baru menggunakan id_variabel dan id_subskala
-|--------------------------------------------------------------------------
 */
 $offset = ($page - 1) * $per_page;
 
@@ -141,7 +136,9 @@ $options = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skrining - Halaman <?= $page; ?></title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -151,22 +148,12 @@ $options = [
 
         body {
             font-family: 'Poppins', sans-serif;
-            background: #f4f4f6;
+            background: #6ea3d9;   /* ★ biru penuh */
             color: #2f3137;
+            min-height: 100vh;
         }
 
-        .container {
-            max-width: 1280px;
-            margin: 0 auto;
-            padding: 12px 16px 24px;
-        }
-
-        .breadcrumb {
-            color: #b5b5b5;
-            font-size: 14px;
-            margin-bottom: 8px;
-        }
-
+        /* ── SCREEN (full page) ── */
         .screen {
             background: #6ea3d9;
             min-height: 100vh;
@@ -177,16 +164,24 @@ $options = [
             padding: 32px 20px;
         }
 
+        .breadcrumb {
+            color: #ffffff;
+            font-size: 14px;
+            margin-bottom: 12px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
         .card {
             width: 100%;
             max-width: 1200px;
             background: #ffffff;
             border-radius: 22px;
-            min-height: 620px;
             box-shadow: 0 12px 24px rgba(0,0,0,.12);
             padding: 40px 48px;
             display: flex;
             flex-direction: column;
+            min-height: 620px;
         }
 
         .header {
@@ -346,6 +341,11 @@ $options = [
             text-decoration: none;
             cursor: pointer;
             box-shadow: 0 8px 18px rgba(0,0,0,.12);
+            transition: 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
         }
 
         .btn-back {
@@ -363,12 +363,12 @@ $options = [
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="breadcrumb">
-        Checking (Halaman <?= $page; ?> dari <?= $total_pages; ?>)
-    </div>
 
     <section class="screen">
+        <div class="breadcrumb">
+            Skrining (Halaman <?= $page; ?> dari <?= $total_pages; ?>)
+        </div>
+
         <div class="card">
             <div class="header">
                 <img src="../assets/img/logo.png" alt="Logo">
@@ -388,12 +388,11 @@ $options = [
                     <?php foreach ($questions as $q): ?>
                         <?php
                             $idVariabel = (string) $q['id_variabel'];
-                            $subskala   = htmlspecialchars($q['nama_subskala']);
                             $checkedVal = $_SESSION['jawaban'][$idVariabel] ?? null;
                         ?>
                         <div class="question-box">
                             <div class="question-head">
-                                No. <?= htmlspecialchars($q['no_item']); ?> | <?= strtoupper($subskala); ?>
+                                No. <?= htmlspecialchars($q['no_item']); ?> 
                             </div>
 
                             <div class="question-text">
@@ -428,18 +427,18 @@ $options = [
 
                 <div class="actions">
                     <?php if ($page > 1): ?>
-                        <a href="step.php?page=<?= $page - 1; ?>" class="btn btn-back">Back</a>
+                        <a href="step.php?page=<?= $page - 1; ?>" class="btn btn-back">Kembali</a>
                     <?php else: ?>
-                        <a href="index.php" class="btn btn-back">Back</a>
+                        <a href="index.php" class="btn btn-back">Kembali</a>
                     <?php endif; ?>
 
                     <button type="submit" class="btn">
-                        <?= ($page == $total_pages) ? 'Finish' : 'Next'; ?>
+                        <?= ($page == $total_pages) ? 'Selesai' : 'Lanjut'; ?>
                     </button>
                 </div>
             </form>
         </div>
     </section>
-</div>
+
 </body>
 </html>

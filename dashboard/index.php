@@ -1,264 +1,291 @@
-    <?php
-        session_start();
-        require_once '../config/database.php';
+<?php
+session_start();
+require_once '../config/database.php';
 
-        if (!isset($_SESSION['npm'])) {
-        header('Location: ../login.php');
-        exit;
-        }   
+if (!isset($_SESSION['npm'])) {
+    header('Location: ../login.php');
+    exit;
+}
 
-        $npm = $_SESSION['npm'];
-        $id_mahasiswa = $_SESSION['id_mahasiswa'];
+$npm = $_SESSION['npm'];
+$id_mahasiswa = $_SESSION['id_mahasiswa'] ?? null;
 
-        // Ambil nama dari database
-        $stmt = $pdo->prepare("SELECT nama FROM mahasiswa WHERE id_mahasiswa = ?");
-        $stmt->execute([$id_mahasiswa]);
-        $nama = $stmt->fetchColumn();
+// Ambil nama dari database jika id_mahasiswa tersedia
+$nama = $npm; // fallback default
+if ($id_mahasiswa) {
+    $stmt = $pdo->prepare("SELECT nama FROM mahasiswa WHERE id_mahasiswa = ?");
+    $stmt->execute([$id_mahasiswa]);
+    $nama = $stmt->fetchColumn() ?: $npm;
+}
 
-        // Jika tidak ditemukan, fallback ke NPM
-        $nama = $nama ?: $npm;
+$page_title = 'Home - Symptom Checker';
 ?>
-    <!DOCTYPE html>
-    <html lang="id">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title><?= htmlspecialchars($page_title); ?></title>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= htmlspecialchars($page_title); ?></title>
 
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-        <style>
-            :root {
-                --bg: #f4f4f6;
-                --white: #ffffff;
-                --text: #2f3137;
-                --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-                --card-blue: #6ea3d9;
-                --card-mint: #aee9cd;
-                --accent: #cbb2e1;
-                --yellow: #fff100;
-                --radius: 26px;
-            }
+    <style>
+        :root {
+            --bg: #f4f4f6;
+            --white: #ffffff;
+            --text: #2f3137;
+            --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            --card-blue: #6ea3d9;
+            --card-mint: #aee9cd;
+            --accent: #cbb2e1;
+            --yellow: #fff100;
+            --radius: 26px;
+        }
 
-            * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-            body {
-                font-family: 'Poppins', sans-serif;
-                background: var(--bg);
-                color: var(--text);
-                min-height: 100vh;
-            }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
 
-            a {
-                text-decoration: none;
-                color: inherit;
-            }
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
 
-            .wrap {
-                max-width: 1280px;
-                margin: 0 auto;
-                padding: 12px 20px 24px;
-                position: relative;
-            }
+        /* ── TOPBAR ── */
+        .topbar {
+            background: var(--white);
+            min-height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
 
-            .breadcrumb {
-                color: #8e8e98;
-                font-size: 14px;
-                margin: 2px 0 12px 2px;
-                font-weight: 500;
-            }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 18px;
+        }
 
-            .topbar {
-                background: var(--white);
-                min-height: 64px;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: 0 20px;
-                border-radius: var(--radius);
-                box-shadow: var(--shadow);
-                margin-bottom: 28px;
-            }
+        .brand img {
+            width: 34px;
+            height: 34px;
+            object-fit: contain;
+        }
 
-            .brand {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                font-weight: 700;
-                font-size: 18px;
-            }
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 28px;
+            font-size: 16px;
+            font-weight: 600;
+        }
 
-            .brand img {
-                width: 34px;
-                height: 34px;
-                object-fit: contain;
-            }
+        .nav-links a {
+            position: relative;
+            padding-bottom: 4px;
+            transition: color 0.2s;
+        }
 
-            .nav-links {
-                display: flex;
-                align-items: center;
-                gap: 28px;
-                font-size: 16px;
-                font-weight: 600;
-            }
+        .nav-links a:hover {
+            color: #6ea3d9;
+        }
 
-            .nav-links a {
-                position: relative;
-                padding-bottom: 4px;
-                transition: color 0.2s;
-            }
+        .nav-links a.active::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -2px;
+            width: 100%;
+            height: 4px;
+            border-radius: 999px;
+            background: #b8e0d1;
+        }
 
-            .nav-links a:hover {
-                color: #6ea3d9;
-            }
+        .hamburger {
+            width: 48px;
+            height: 48px;
+            border: none;
+            border-radius: 16px;
+            background: var(--accent);
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            box-shadow: 0 6px 16px rgba(0,0,0,.12);
+            transition: background 0.2s;
+        }
 
-            .nav-links a.active::after {
-                content: '';
-                position: absolute;
-                left: 0;
-                bottom: -2px;
-                width: 100%;
-                height: 4px;
-                border-radius: 999px;
-                background: #b8e0d1;
-            }
+        .hamburger:hover {
+            background: #b794d4;
+        }
 
-            .hamburger {
-                width: 48px;
-                height: 48px;
-                border: none;
-                border-radius: 16px;
-                background: var(--accent);
-                display: grid;
-                place-items: center;
-                cursor: pointer;
-                box-shadow: 0 6px 16px rgba(0,0,0,.12);
-                transition: background 0.2s;
-            }
+        .hamburger span,
+        .hamburger span::before,
+        .hamburger span::after {
+            content: '';
+            display: block;
+            width: 22px;
+            height: 3px;
+            border-radius: 999px;
+            background: #37343f;
+            position: relative;
+        }
 
-            .hamburger:hover {
-                background: #b794d4;
-            }
+        .hamburger span::before {
+            position: absolute;
+            top: -7px;
+            left: 0;
+        }
 
-            .hamburger span,
-            .hamburger span::before,
-            .hamburger span::after {
-                content: '';
-                display: block;
-                width: 22px;
-                height: 3px;
-                border-radius: 999px;
-                background: #37343f;
-                position: relative;
-            }
+        .hamburger span::after {
+            position: absolute;
+            top: 7px;
+            left: 0;
+        }
 
-            .hamburger span::before {
-                position: absolute;
-                top: -7px;
-                left: 0;
-            }
+        /* ── WRAPPER (pusat konten) ── */
+        .wrap {
+            max-width: 2660px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 20px 24px 12px;
+            flex: 1;
+        }
 
-            .hamburger span::after {
-                position: absolute;
-                top: 7px;
-                left: 0;
-            }
+        .breadcrumb {
+            color: #8e8e98;
+            font-size: 14px;
+            margin-bottom: 16px;
+            font-weight: 500;
+        }
 
-            .hero {
-                position: relative;
-                padding-bottom: 60px;
+        .hero {
+            margin-bottom: 32px;
+        }
+
+        .hero h1 {
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1.3;
+            color: #1c1f26;
+        }
+
+        /* ── CARDS ── */
+        .cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            border-radius: var(--radius);
+            padding: 28px 24px;
+            min-height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s ease, box-shadow 0.2s;
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 14px 28px rgba(0,0,0,0.12);
+        }
+
+        .card.blue {
+            background: var(--card-blue);
+            color: #fff;
+        }
+
+        .card.mint {
+            background: var(--card-mint);
+            color: #1a3b2e;
+        }
+
+        .card h2 {
+            font-size: 34px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .card p {
+            font-size: 20px;
+            line-height: 1.6;
+            max-width: 320px;
+        }
+
+        .card img {
+            max-width: 550px;
+            height: auto;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        /* ── GAMBAR BAWAH ── */
+.bottom-illustration {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    line-height: 0;  /* menghilangkan celah di bawah gambar */
+}
+
+.bottom-illustration img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;    /* opsional, supaya gambar memenuhi area */
+    max-height: 300px;    /* batasi tinggi agar tidak terlalu besar */
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.05));
+}
+
+        @media (max-width: 768px) {
+            .cards {
+                grid-template-columns: 1fr;
             }
 
             .hero h1 {
-                font-size: 32px;
-                font-weight: 700;
-                line-height: 1.3;
-                margin-bottom: 32px;
-                color: #1c1f26;
+                font-size: 26px;
             }
-            
 
-            .cards {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 24px;
+            .nav-links {
+                gap: 16px;
             }
 
             .card {
-                border-radius: var(--radius);
-                padding: 32px 28px;
-                min-height: 180px;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                box-shadow: var(--shadow);
-                transition: transform 0.2s ease, box-shadow 0.2s;
-                cursor: pointer;
+                flex-direction: column;
+                text-align: center;
             }
 
-            .card:hover {
-                transform: translateY(-4px);
-                box-shadow: 0 14px 28px rgba(0,0,0,0.12);
+            .card img {
+                margin-top: 16px;
+                max-width: 120px;
             }
-
-            .card.blue {
-                background: var(--card-blue);
-                color: #fff;
-            }
-
-            .card.mint {
-                background: var(--card-mint);
-                color: #1a3b2e;
-            }
-
-            .card h2 {
-                font-size: 24px;
-                margin-bottom: 10px;
-                font-weight: 700;
-            }
-
-            .card p {
-                font-size: 14px;
-                line-height: 1.6;
-                max-width: 240px;
-            }
-
-            .wave {
-                position: absolute;
-                bottom: 0;
-                left: 0;
-                width: 100%;
-                line-height: 0;
-                pointer-events: none;
-            }
-
-            .wave svg {
-                width: 100%;
-                height: 80px;
-                display: block;
-            }
-
-            @media (max-width: 768px) {
-                .cards {
-                    grid-template-columns: 1fr;
-                }
-
-                .hero h1 {
-                    font-size: 26px;
-                }
-
-                .nav-links {
-                    gap: 16px;
-                }
-            }
-        </style>
-    </head>
+        }
+    </style>
+</head>
 <body>
 
     <!-- ========== TOPBAR ========== -->
@@ -278,37 +305,39 @@
     </header>
 
     <!-- ========== NAVIGASI DRAWER ========== -->
-    <?php include 'navigasi.php'; ?>   
+    <?php include 'navigasi.php'; ?>
 
     <!-- ========== KONTEN UTAMA ========== -->
-    <div class="main-content">
-        <div class="breadcrumb"></div>
+    <div class="wrap">
+        <div class="breadcrumb">Home</div>
 
-        <div class="greeting">
-        <h1>Halo, <?= htmlspecialchars($nama, $npm); ?>! <br>
-            How are you feeling today?
-        </h1>
+        <div class="hero">
+            <h1>Halo, <?= htmlspecialchars($nama); ?>!<br>Bagaimana perasaanmu hari ini?</h1>
         </div>
-<div class="breadcrumb"></div>  
 
         <section class="cards">
             <a href="../skrining/index.php" class="card blue">
                 <div>
-                    <h2>Start Checking</h2>
-                    <p>Every feeling has meaning. Let's understand what you're experiencing.</p>
+                    <h2>Mulai Skrining</h2>
+                    <p>Setiap perasaan memiliki arti. Mari pahami apa yang sedang Anda alami.</p>
                 </div>
-                <img src="../assets/img/helpme.png" alt="Hero Image" style="width: 220px; height: auto; object-fit: contain;">
+                <img src="../assets/img/helpme.png" alt="Ilustrasi Skrining">
             </a>
 
             <a href="../riwayat/index.php" class="card mint">
                 <div>
-                    <h2>History Check</h2>
-                    <p>Revisit your previous check results and see how your emotional condition changes over time.</p>
+                    <h2>Riwayat Skrining</h2>
+                    <p>Lihat kembali hasil skrining sebelumnya dan pantau perubahan kondisi emosional Anda dari waktu ke waktu.</p>
                 </div>
-                <img src="../assets/img/kertas.png" alt="History Image" style="width: 220px; height: auto; object-fit: contain;">
+                <img src="../assets/img/kertas.png" alt="Ilustrasi Riwayat">
             </a>
         </section>
     </div>
 
+    <!-- ========== GAMBAR BAWAH ========== -->
+    <div class="bottom-illustration">
+        <img src="../assets/img/rt2.png" alt="Ilustrasi peduli kesehatan mental">
+    </div>
+
 </body>
-    </html>
+</html>
