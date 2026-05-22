@@ -1,197 +1,182 @@
 <?php
-// skrining/process.php
+/**
+ * skrining/process.php
+ * Menyimpan hasil skrining DASS-42 ke database.
+ */
+
 session_start();
 
-if (!isset($_SESSION['npm']) || !isset($_SESSION['id_mahasiswa'])) {
+// ---------------------------------------------------------------------------
+// 1. Autentikasi & Otorisasi
+// ---------------------------------------------------------------------------
+// Pastikan pengguna sudah login dan memiliki session npm serta id_mahasiswa
+if (!isset($_SESSION['npm'], $_SESSION['id_mahasiswa'])) {
     header('Location: ../login.php');
     exit;
 }
 
 require_once '../config/database.php';
 
-if (!isset($_SESSION['jawaban']) || !is_array($_SESSION['jawaban']) || count($_SESSION['jawaban']) === 0) {
+// ---------------------------------------------------------------------------
+// 2. Validasi jawaban yang ada di session
+// ---------------------------------------------------------------------------
+if (
+    !isset($_SESSION['jawaban'])
+    || !is_array($_SESSION['jawaban'])
+    || empty($_SESSION['jawaban'])
+) {
     header('Location: step.php?page=1');
     exit;
 }
 
-$id_mahasiswa = (int) $_SESSION['id_mahasiswa'];
-$jawaban = $_SESSION['jawaban'];
+// Ambil id_mahasiswa dari session (format custom: IDMxxx)
+$id_mahasiswa = (string) $_SESSION['id_mahasiswa'];
+$jawaban      = $_SESSION['jawaban'];
 
-/*
-|--------------------------------------------------------------------------
-| Ambil semua variabel aktif dari database
-|--------------------------------------------------------------------------
-*/
-$stmt = $pdo->query("
-    SELECT id_variabel, subskala
-    FROM variabel_skrining
-    WHERE status_aktif = 1
-    ORDER BY urutan_tampil ASC
-");
-$variabel = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// ---------------------------------------------------------------------------
+// 3. Validasi keberadaan id_mahasiswa di database
+// ---------------------------------------------------------------------------
+try {
+    $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM mahasiswa WHERE id_mahasiswa = ?");
+    $checkStmt->execute([$id_mahasiswa]);
+
+    if ($checkStmt->fetchColumn() == 0) {
+        // ID mahasiswa tidak valid – kemungkinan session rusak atau data dihapus
+        // Hapus session dan arahkan ke login
+        session_destroy();
+        header('Location: ../login.php?error=invalid');
+        exit;
+    }
+} catch (Throwable $e) {
+    die('Terjadi kesalahan saat memverifikasi data pengguna.');
+}
+
+// ---------------------------------------------------------------------------
+// 4. Ambil semua variabel aktif dari database
+// ---------------------------------------------------------------------------
+try {
+    $stmt = $pdo->query("
+        SELECT id_variabel, id_subskala
+        FROM variabel_skrining
+        WHERE status_aktif = 1
+        ORDER BY urutan_tampil ASC
+    ");
+    $variabel = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+    die('Gagal mengambil data pertanyaan: ' . $e->getMessage());
+}
 
 if (!$variabel) {
     die('Tidak ada data pada tabel variabel_skrining.');
 }
 
-/*
-|--------------------------------------------------------------------------
-| Validasi apakah semua pertanyaan sudah dijawab
-|--------------------------------------------------------------------------
-*/
-if (count($jawaban) < count($variabel)) {
-    die('Masih ada pertanyaan yang belum dijawab. Silakan kembali ke skrining.');
+// ---------------------------------------------------------------------------
+// 5. Validasi jawaban lengkap
+// ---------------------------------------------------------------------------
+foreach ($variabel as $v) {
+    if (!array_key_exists($v['id_variabel'], $jawaban)) {
+        die('Masih ada pertanyaan yang belum dijawab. Silakan kembali ke skrining.');
+    }
 }
 
-/*
-|--------------------------------------------------------------------------
-| Hitung skor per subskala
-|--------------------------------------------------------------------------
-*/
+// ---------------------------------------------------------------------------
+// 6. Hitung skor per subskala
+// ---------------------------------------------------------------------------
 $skor_depresi = 0;
 $skor_anxiety = 0;
 $skor_stress  = 0;
 
 foreach ($variabel as $v) {
-    $id_variabel = (int) $v['id_variabel'];
-    $subskala    = strtolower(trim($v['subskala']));
-
-    if (!isset($jawaban[$id_variabel])) {
-        die('Ada pertanyaan yang belum dijawab. Silakan ulangi skrining.');
-    }
-
-    $nilai = (int) $jawaban[$id_variabel];
+    $id_variabel = (string) $v['id_variabel'];
+    $id_subskala = (string) $v['id_subskala'];
+    $nilai       = (int) $jawaban[$id_variabel];
 
     if ($nilai < 0 || $nilai > 3) {
         die('Nilai jawaban tidak valid.');
     }
 
-    switch ($subskala) {
-        case 'depression':
+    switch ($id_subskala) {
+        case 'IDU001': // Depression
             $skor_depresi += $nilai;
             break;
-
-        case 'anxiety':
+        case 'IDU002': // Anxiety
             $skor_anxiety += $nilai;
             break;
-
-        case 'stress':
+        case 'IDU003': // Stress
             $skor_stress += $nilai;
             break;
-
         default:
             die('Subskala tidak dikenal pada variabel_skrining.');
     }
 }
 
-$skor_total = $skor_depresi + $skor_anxiety + $skor_stress;
-
-/*
-|--------------------------------------------------------------------------
-| Fungsi kategori DASS-42
-|--------------------------------------------------------------------------
-| Catatan:
-| - DASS-42 menggunakan skor mentah (raw score).
-| - Kategori berikut umum dipakai untuk interpretasi.
-|--------------------------------------------------------------------------
-*/
-function kategoriDepresi(int $skor): string
+// ---------------------------------------------------------------------------
+// 7. Fungsi pembantu untuk membuat ID custom
+// ---------------------------------------------------------------------------
+function generateCustomId(PDO $pdo, string $table, string $column, string $prefix, int $padLength = 3): string
 {
-    if ($skor <= 9)  return 'Normal';
-    if ($skor <= 13) return 'Ringan';
-    if ($skor <= 20) return 'Sedang';
-    if ($skor <= 27) return 'Berat';
-    return 'Sangat Berat';
-}
+    $like = $prefix . '%';
+    $offset = strlen($prefix) + 1;
 
-function kategoriAnxiety(int $skor): string
-{
-    if ($skor <= 7)  return 'Normal';
-    if ($skor <= 9)  return 'Ringan';
-    if ($skor <= 14) return 'Sedang';
-    if ($skor <= 19) return 'Berat';
-    return 'Sangat Berat';
-}
+    $sql = "
+        SELECT `$column`
+        FROM `$table`
+        WHERE `$column` LIKE :like
+        ORDER BY CAST(SUBSTRING(`$column`, $offset) AS UNSIGNED) DESC
+        LIMIT 1
+    ";
 
-function kategoriStress(int $skor): string
-{
-    if ($skor <= 14) return 'Normal';
-    if ($skor <= 18) return 'Ringan';
-    if ($skor <= 25) return 'Sedang';
-    if ($skor <= 33) return 'Berat';
-    return 'Sangat Berat';
-}
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':like' => $like]);
+    $lastId = $stmt->fetchColumn();
 
-$kategori_depresi = kategoriDepresi($skor_depresi);
-$kategori_anxiety = kategoriAnxiety($skor_anxiety);
-$kategori_stress  = kategoriStress($skor_stress);
+    $nextNumber = 1;
 
-/*
-|--------------------------------------------------------------------------
-| Tentukan level risiko keseluruhan dari tabel level_risiko
-|--------------------------------------------------------------------------
-*/
-$stmtLevel = $pdo->prepare("
-    SELECT id_level, nama_level
-    FROM level_risiko
-    WHERE :skor BETWEEN skor_min AND skor_max
-    LIMIT 1
-");
-$stmtLevel->execute([':skor' => $skor_total]);
-$level = $stmtLevel->fetch(PDO::FETCH_ASSOC);
-
-if (!$level) {
-    // fallback jika data level_risiko belum sesuai
-    if ($skor_total <= 20) {
-        $level = ['id_level' => 1, 'nama_level' => 'Rendah'];
-    } elseif ($skor_total <= 41) {
-        $level = ['id_level' => 2, 'nama_level' => 'Sedang'];
-    } else {
-        $level = ['id_level' => 3, 'nama_level' => 'Tinggi'];
+    if ($lastId && preg_match('/^' . preg_quote($prefix, '/') . '(\d+)$/', $lastId, $match)) {
+        $nextNumber = ((int) $match[1]) + 1;
     }
+
+    return $prefix . str_pad((string) $nextNumber, $padLength, '0', STR_PAD_LEFT);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Simpan ke database
-|--------------------------------------------------------------------------
-*/
-$catatan = "Depresi: {$kategori_depresi} | Anxiety: {$kategori_anxiety} | Stress: {$kategori_stress}";
-
+// ---------------------------------------------------------------------------
+// 8. Simpan ke database
+// ---------------------------------------------------------------------------
 try {
     $pdo->beginTransaction();
 
-    // Simpan ringkasan skrining
+    // 8a. ID skrining custom (IDSxxx)
+    $id_skrining = generateCustomId($pdo, 'skrining', 'id_skrining', 'IDS', 3);
+
+    // 8b. Simpan header skrining
     $stmtInsert = $pdo->prepare("
         INSERT INTO skrining
-            (id_mahasiswa, tgl_skrining, skor_depresi, skor_anxiety, skor_stress, skor_total, id_level, catatan)
+            (id_skrining, id_mahasiswa, tgl_skrining, skor_depresi, skor_anxiety, skor_stress, catatan)
         VALUES
-            (:id_mahasiswa, NOW(), :skor_depresi, :skor_anxiety, :skor_stress, :skor_total, :id_level, :catatan)
+            (:id_skrining, :id_mahasiswa, NOW(), :skor_depresi, :skor_anxiety, :skor_stress, :catatan)
     ");
-
     $stmtInsert->execute([
+        ':id_skrining'  => $id_skrining,
         ':id_mahasiswa' => $id_mahasiswa,
         ':skor_depresi' => $skor_depresi,
         ':skor_anxiety' => $skor_anxiety,
         ':skor_stress'  => $skor_stress,
-        ':skor_total'   => $skor_total,
-        ':id_level'     => $level['id_level'],
-        ':catatan'      => $catatan
+        ':catatan'      => 'Hasil skrining DASS-42'
     ]);
 
-    $id_skrining = (int) $pdo->lastInsertId();
-
-    // Simpan detail jawaban
+    // 8c. Simpan detail jawaban
     $stmtDetail = $pdo->prepare("
-        INSERT INTO detail_skrining (id_skrining, id_variabel, nilai)
-        VALUES (:id_skrining, :id_variabel, :nilai)
+        INSERT INTO detail_skrining (id_detail, id_skrining, id_variabel, nilai)
+        VALUES (:id_detail, :id_skrining, :id_variabel, :nilai)
     ");
 
-    foreach ($jawaban as $id_variabel => $nilai) {
-        $id_variabel = (int) $id_variabel;
-        $nilai = (int) $nilai;
+    foreach ($variabel as $v) {
+        $id_variabel = (string) $v['id_variabel'];
+        $nilai       = (int) $jawaban[$id_variabel];
+        $id_detail   = generateCustomId($pdo, 'detail_skrining', 'id_detail', 'IDD', 3);
 
         $stmtDetail->execute([
+            ':id_detail'   => $id_detail,
             ':id_skrining' => $id_skrining,
             ':id_variabel' => $id_variabel,
             ':nilai'       => $nilai
@@ -200,16 +185,18 @@ try {
 
     $pdo->commit();
 
-    // Bersihkan session jawaban
+    // 9. Bersihkan session jawaban dan arahkan ke hasil
     unset($_SESSION['jawaban']);
     $_SESSION['id_skrining_terakhir'] = $id_skrining;
 
-    header('Location: result.php?id_skrining=' . $id_skrining);
+    header('Location: result.php?id_skrining=' . urlencode($id_skrining));
     exit;
 
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    die('Gagal menyimpan hasil skrining: ' . $e->getMessage());
+    // Log error (jika diinginkan) dan beri tahu pengguna
+    error_log('Error simpan skrining: ' . $e->getMessage());
+    die('Gagal menyimpan hasil skrining. Silakan coba lagi atau hubungi administrator.');
 }

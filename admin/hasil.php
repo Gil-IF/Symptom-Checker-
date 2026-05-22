@@ -17,7 +17,7 @@ $filterStart = $_GET['start'] ?? date('Y-m-d', strtotime('-30 days'));
 $filterEnd   = $_GET['end']   ?? date('Y-m-d');
 
 try {
-    // Query dengan join untuk mendapatkan kategori per subskala
+    // Query dengan join + COALESCE untuk menghindari null
     $sql = "
         SELECT 
             s.id_skrining,
@@ -28,9 +28,9 @@ try {
             (s.skor_depresi + s.skor_anxiety + s.skor_stress) AS skor_total,
             m.npm,
             m.nama,
-            kd.nama_kategori AS kategori_depresi,
-            ka.nama_kategori AS kategori_anxiety,
-            ks.nama_kategori AS kategori_stress
+            COALESCE(kd.nama_kategori, 'Tidak diketahui') AS kategori_depresi,
+            COALESCE(ka.nama_kategori, 'Tidak diketahui') AS kategori_anxiety,
+            COALESCE(ks.nama_kategori, 'Tidak diketahui') AS kategori_stress
         FROM skrining s
         JOIN mahasiswa m ON m.id_mahasiswa = s.id_mahasiswa
         LEFT JOIN kategori_subskala kd 
@@ -52,29 +52,34 @@ try {
     die('Error: ' . $e->getMessage());
 }
 
-// Fungsi menentukan risk level dari tiga kategori
-function getRiskLevel(string $depresi, string $anxiety, string $stress): string
+function getRiskLevel(?string $depresi, ?string $anxiety, ?string $stress): string
 {
-    $all = [$depresi, $anxiety, $stress];
-    $high   = false;
-    $medium = false;
-    foreach ($all as $kat) {
-        $k = strtolower($kat);
-        if (str_contains($k, 'berat')) $high = true;
-        elseif (str_contains($k, 'sedang')) $medium = true;
+    // Prioritas: Sangat Berat > Berat > Sedang > Ringan > Normal
+    $levels = [$depresi, $anxiety, $stress];
+
+    if (in_array('Sangat Berat', $levels)) {
+        return 'Sangat Berat';
     }
-    if ($high) return 'High Risk';
-    if ($medium) return 'Medium Risk';
-    return 'Low Risk';
+    if (in_array('Berat', $levels)) {
+        return 'Berat';
+    }
+    if (in_array('Sedang', $levels)) {
+        return 'Sedang';
+    }
+    if (in_array('Ringan', $levels)) {
+        return 'Ringan';
+    }
+    return 'Normal';
 }
 
-// Fungsi untuk menentukan kelas badge
 function getRiskBadgeClass(string $risk): string
 {
     return match ($risk) {
-        'High Risk'   => 'badge-danger',
-        'Medium Risk' => 'badge-warning',
-        default       => 'badge-success'
+        'Sangat Berat' => 'badge-danger',
+        'Berat'        => 'badge-danger',
+        'Sedang'       => 'badge-warning',
+        'Ringan'       => 'badge-warning',
+        default        => 'badge-success'  // Normal
     };
 }
 ?>

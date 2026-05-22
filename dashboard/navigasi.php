@@ -205,11 +205,12 @@ $avatar = $_SESSION['avatar'] ?? 'assets/img/avatar.png';
     <li><a href="../skrining/index.php"><span class="icon">📝</span>Start Checking</a></li>
     <li><a href="../riwayat/index.php"><span class="icon">⏳</span>History</a></li>
     <li><a href="../about.php"><span class="icon">❓</span>About</a></li>
+    <li><a href="../logout.php"><span class="icon">🚪</span>Logout</a></li>
   </ul>
 
   <div class="drawer-footer">
     NPM: <?php echo htmlspecialchars($npm); ?>
-  </div>
+  </div> 
 </aside>
 
 <script>

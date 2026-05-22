@@ -98,9 +98,9 @@ body{
 
     <ul class="menu">
         <li><a href="#">Personal Summary</a></li>
-        <li><a href="riwayat/index.php">History Check</a></li>
+        <li><a href="../riwayat/index.php">History Check</a></li>
         <li><a href="#">Account & Security</a></li>
-        <li><a href="logout.php" class="logout">Logout</a></li>
+        <li><a href="../logout.php" class="logout">Logout</a></li>
     </ul>
 </div>
 </body>

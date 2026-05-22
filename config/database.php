@@ -5,7 +5,7 @@
  */
 
 $host = 'localhost';
-$dbname = 'db_sc';      // Ganti sesuai nama database Anda
+$dbname = 'db_hc';      // Ganti sesuai nama database Anda
 $username = 'root';
 $password = '';         // Kosongkan jika root tanpa password
 $charset = 'utf8mb4';

@@ -1,210 +1,227 @@
 <?php
 // skrining/result.php
 session_start();
+require_once '../config/database.php';
 
+// Pastikan user sudah login
 if (!isset($_SESSION['npm']) || !isset($_SESSION['id_mahasiswa'])) {
     header('Location: ../login.php');
     exit;
 }
 
-require_once '../config/database.php';
+$id_skrining = $_GET['id_skrining'] ?? '';
 
-$id_skrining = isset($_GET['id_skrining'])
-    ? (int) $_GET['id_skrining']
-    : (int) ($_SESSION['id_skrining_terakhir'] ?? 0);
-
-if ($id_skrining <= 0) {
-    header('Location: index.php');
-    exit;
+// Validasi format ID
+if (!preg_match('/^IDS\d{3}$/', $id_skrining)) {
+    die('ID skrining tidak valid.');
 }
 
+// Ambil data header skrining + data mahasiswa
 $stmt = $pdo->prepare("
     SELECT
-        s.*,
+        s.id_skrining,
+        s.id_mahasiswa,
+        s.tgl_skrining,
+        s.skor_depresi,
+        s.skor_anxiety,
+        s.skor_stress,
         m.npm,
-        lr.nama_level,
-        lr.skor_min,
-        lr.skor_max
+        m.nama
     FROM skrining s
-    JOIN mahasiswa m ON s.id_mahasiswa = m.id_mahasiswa
-    JOIN level_risiko lr ON s.id_level = lr.id_level
+    JOIN mahasiswa m ON m.id_mahasiswa = s.id_mahasiswa
     WHERE s.id_skrining = :id_skrining
-      AND s.id_mahasiswa = :id_mahasiswa
-    LIMIT 1
 ");
-$stmt->execute([
-    ':id_skrining' => $id_skrining,
-    ':id_mahasiswa' => (int) $_SESSION['id_mahasiswa']
-]);
+$stmt->execute([':id_skrining' => $id_skrining]);
+$hasil = $stmt->fetch(PDO::FETCH_ASSOC);
 
-$data = $stmt->fetch();
-
-if (!$data) {
+if (!$hasil) {
     die('Data hasil skrining tidak ditemukan.');
 }
 
-function kategoriDepresi(int $skor): string
-{
-    if ($skor <= 9) return 'Normal';
-    if ($skor <= 13) return 'Mild';
-    if ($skor <= 20) return 'Moderate';
-    if ($skor <= 27) return 'Severe';
-    return 'Extremely Severe';
+// ---------------------------------------------------------------------------
+// Otorisasi: hanya mahasiswa pemilik data atau admin yang boleh melihat
+// ---------------------------------------------------------------------------
+$isAdmin   = ($_SESSION['role'] ?? '') === 'admin';
+$isPemilik = ($_SESSION['id_mahasiswa'] === $hasil['id_mahasiswa']);
+if (!$isAdmin && !$isPemilik) {
+    header('Location: ../dashboard/index.php');
+    exit;
 }
 
-function kategoriAnxiety(int $skor): string
-{
-    if ($skor <= 7) return 'Normal';
-    if ($skor <= 9) return 'Mild';
-    if ($skor <= 14) return 'Moderate';
-    if ($skor <= 19) return 'Severe';
-    return 'Extremely Severe';
+// ---------------------------------------------------------------------------
+// Hitung skor total
+// ---------------------------------------------------------------------------
+$skorTotal = $hasil['skor_depresi'] + $hasil['skor_anxiety'] + $hasil['skor_stress'];
+
+// ---------------------------------------------------------------------------
+// Tentukan kategori untuk masing-masing subskala dari tabel kategori_subskala
+// ---------------------------------------------------------------------------
+function getKategori(PDO $pdo, string $idSubskala, int $skor): string {
+    $stmt = $pdo->prepare("
+        SELECT nama_kategori
+        FROM kategori_subskala
+        WHERE id_subskala = :id_subskala
+          AND :skor BETWEEN rentang_min AND rentang_max
+    ");
+    $stmt->execute([':id_subskala' => $idSubskala, ':skor' => $skor]);
+    $result = $stmt->fetchColumn();
+    return $result ?: 'Tidak diketahui';
 }
 
-function kategoriStress(int $skor): string
-{
-    if ($skor <= 14) return 'Normal';
-    if ($skor <= 18) return 'Mild';
-    if ($skor <= 25) return 'Moderate';
-    if ($skor <= 33) return 'Severe';
-    return 'Extremely Severe';
+$kategoriDepresi = getKategori($pdo, 'IDU001', $hasil['skor_depresi']);
+$kategoriAnxiety = getKategori($pdo, 'IDU002', $hasil['skor_anxiety']);
+$kategoriStress  = getKategori($pdo, 'IDU003', $hasil['skor_stress']);
+
+// ---------------------------------------------------------------------------
+// Ambil rekomendasi berdasarkan kategori
+// ---------------------------------------------------------------------------
+$rekomendasi = [];
+try {
+    $stmtRekom = $pdo->prepare("
+        SELECT r.teks_rekomendasi
+        FROM rekomendasi r
+        JOIN kategori_subskala k ON r.id_kategori = k.id_kategori
+        WHERE (k.nama_kategori = :depresi AND k.id_subskala = 'IDU001')
+           OR (k.nama_kategori = :anxiety AND k.id_subskala = 'IDU002')
+           OR (k.nama_kategori = :stress  AND k.id_subskala = 'IDU003')
+        ORDER BY r.urutan ASC
+    ");
+    $stmtRekom->execute([
+        ':depresi' => $kategoriDepresi,
+        ':anxiety' => $kategoriAnxiety,
+        ':stress'  => $kategoriStress,
+    ]);
+    $rekomendasi = $stmtRekom->fetchAll(PDO::FETCH_COLUMN);
+} catch (Throwable $e) {
+    $rekomendasi = [];
 }
 
-$stmtRec = $pdo->prepare("
-    SELECT teks_rekomendasi
-    FROM rekomendasi
-    WHERE id_level = :id_level AND status_aktif = 1
-    ORDER BY urutan_rekomendasi ASC
-");
-$stmtRec->execute([':id_level' => (int) $data['id_level']]);
-$rekomendasi = $stmtRec->fetchAll();
-
-$catDepresi = kategoriDepresi((int)$data['skor_depresi']);
-$catAnxiety = kategoriAnxiety((int)$data['skor_anxiety']);
-$catStress  = kategoriStress((int)$data['skor_stress']);
+// Fungsi untuk memilih emoji
+function getEmoji(string $kategori): string {
+    $k = strtolower($kategori);
+    if (str_contains($k, 'normal')) return '🙂';
+    if (str_contains($k, 'ringan')) return '😐';
+    if (str_contains($k, 'sedang')) return '😐';
+    if (str_contains($k, 'berat'))  return '😟';
+    if (str_contains($k, 'sangat berat')) return '😟';
+    return '😟';
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hasil Skrining</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+    <title>Hasil Skrining DASS-42</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
         body {
-            font-family:'Poppins',sans-serif;
-            background:#f4f4f6;
-            color:#2f3137;
+            font-family: 'Poppins', sans-serif;
+            background: #f5f7fb;
+            margin: 0; padding: 20px;
+            color: #2f3137;
         }
         .container {
-            max-width:1100px;
-            margin:0 auto;
-            padding:20px;
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
-        .card {
-            background:#fff;
-            border-radius:24px;
-            box-shadow:0 12px 24px rgba(0,0,0,.12);
-            padding:32px;
+        h1 { text-align: center; }
+        .info { text-align: center; color: #666; margin-bottom: 20px; }
+        .skor-box {
+            background: #6ea3d9;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 16px;
+            display: inline-block;
+            margin: 0 auto 20px;
+            font-size: 24px;
+            font-weight: bold;
         }
-        h1 {
-            margin-bottom:18px;
-            font-size:32px;
+        .kategori-container {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
         }
-        .summary {
-            display:grid;
-            grid-template-columns:repeat(2,minmax(0,1fr));
-            gap:16px;
-            margin:20px 0 28px;
+        .kategori {
+            text-align: center;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 12px;
+            flex: 1;
+            margin: 0 10px;
         }
-        .box {
-            background:#f9f9f9;
-            border:2px solid #e6e6e6;
-            border-radius:16px;
-            padding:18px;
+        .kategori .emoji { font-size: 36px; }
+        .kategori .nama { font-weight: bold; margin-top: 8px; }
+        .rekomendasi {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 12px;
+            margin: 20px 0;
         }
-        .box strong {
-            display:block;
-            margin-bottom:8px;
-        }
-        .level {
-            background:#a9e2d3;
-            padding:16px 20px;
-            border-radius:16px;
-            font-weight:700;
-            margin-bottom:24px;
-        }
-        ul {
-            margin-left:20px;
-            line-height:1.8;
-        }
+        .rekomendasi h3 { margin-top: 0; }
+        .rekomendasi ul { padding-left: 20px; }
         .btn {
-            display:inline-block;
-            margin-top:24px;
-            background:#6ea3d9;
-            color:#fff;
-            text-decoration:none;
-            padding:12px 22px;
-            border-radius:999px;
-            font-weight:700;
-        }
-        @media (max-width:768px) {
-            .summary { grid-template-columns:1fr; }
+            display: inline-block;
+            background: #a9e2d3;
+            color: #27313a;
+            padding: 10px 20px;
+            border-radius: 999px;
+            text-decoration: none;
+            font-weight: bold;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="card">
-        <h1>Hasil Skrining</h1>
+    <h1>Hasil Skrining DASS-42</h1>
+    <div class="info">
+        <p><strong>Nama:</strong> <?= htmlspecialchars($hasil['nama']); ?> (<?= htmlspecialchars($hasil['npm']); ?>)</p>
+        <p><strong>Tanggal:</strong> <?= date('d M Y H:i', strtotime($hasil['tgl_skrining'])); ?> WIB</p>
+    </div>
 
-        <div class="level">
-            Tingkat Risiko Keseluruhan: <?= htmlspecialchars($data['nama_level']); ?>
-            (Skor Total: <?= (int)$data['skor_total']; ?>)
+    <div style="text-align: center;">
+        <div class="skor-box">Skor Total: <?= $skorTotal; ?></div>
+    </div>
+
+    <div class="kategori-container">
+        <div class="kategori">
+            <div class="emoji"><?= getEmoji($kategoriDepresi); ?></div>
+            <div class="nama">Depresi</div>
+            <div><?= htmlspecialchars($kategoriDepresi); ?></div>
         </div>
-
-        <div class="summary">
-            <div class="box">
-                <strong>Depresi</strong>
-                Skor: <?= (int)$data['skor_depresi']; ?><br>
-                Kategori: <?= htmlspecialchars($catDepresi); ?>
-            </div>
-
-            <div class="box">
-                <strong>Anxiety</strong>
-                Skor: <?= (int)$data['skor_anxiety']; ?><br>
-                Kategori: <?= htmlspecialchars($catAnxiety); ?>
-            </div>
-
-            <div class="box">
-                <strong>Stress</strong>
-                Skor: <?= (int)$data['skor_stress']; ?><br>
-                Kategori: <?= htmlspecialchars($catStress); ?>
-            </div>
-
-            <div class="box">
-                <strong>NPM</strong>
-                <?= htmlspecialchars($data['npm']); ?><br>
-                Tanggal: <?= htmlspecialchars($data['tgl_skrining']); ?>
-            </div>
+        <div class="kategori">
+            <div class="emoji"><?= getEmoji($kategoriAnxiety); ?></div>
+            <div class="nama">Kecemasan</div>
+            <div><?= htmlspecialchars($kategoriAnxiety); ?></div>
         </div>
-
-        <div class="box">
-            <strong>Catatan Hasil</strong>
-            <?= htmlspecialchars($data['catatan']); ?>
+        <div class="kategori">
+            <div class="emoji"><?= getEmoji($kategoriStress); ?></div>
+            <div class="nama">Stres</div>
+            <div><?= htmlspecialchars($kategoriStress); ?></div>
         </div>
+    </div>
 
-        <div class="box" style="margin-top:20px;">
-            <strong>Rekomendasi</strong>
-            <ul>
-                <?php foreach ($rekomendasi as $rec): ?>
-                    <li><?= htmlspecialchars($rec['teks_rekomendasi']); ?></li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
+    <?php if (!empty($rekomendasi)): ?>
+    <div class="rekomendasi">
+        <h3>Rekomendasi untuk Anda</h3>
+        <ul>
+            <?php foreach ($rekomendasi as $r): ?>
+                <li><?= htmlspecialchars($r); ?></li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+    <?php endif; ?>
 
+    <div style="text-align: center;">
         <a href="../dashboard/index.php" class="btn">Kembali ke Dashboard</a>
+        <a href="../riwayat/index.php" class="btn">Lihat Riwayat</a>
     </div>
 </div>
 </body>

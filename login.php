@@ -4,7 +4,11 @@ session_start();
 
 // Jika sudah login, langsung ke dashboard
 if (!empty($_SESSION['logged_in'])) {
-    header('Location: dashboard/index.php');
+    if (($_SESSION['role'] ?? '') === 'admin') {
+        header('Location: admin/index.php');
+    } else {
+        header('Location: dashboard/index.php');
+    }
     exit;
 }
 
@@ -433,13 +437,14 @@ $registered   = isset($_GET['registered']) && $_GET['registered'] === '1';
                     <div class="field">
                         <span class="icon">@</span>
                         <input
-                            type="text"
-                            name="npm"
-                            placeholder="NPM"
-                            autocomplete="username"
-                            required
-                            class="<?php echo $error_msg ? 'has-error' : ''; ?>"
-                            value="<?php echo htmlspecialchars($_POST['npm'] ?? ''); ?>"
+                type="text"
+                name="login"
+                placeholder="NPM / Username"
+                title="Masukkan NPM (mahasiswa) atau username (admin)"
+                autocomplete="username" 
+                required
+                class="<?php echo $error_msg ? 'has-error' : ''; ?>"
+                value="<?php echo htmlspecialchars($_POST['login'] ?? ''); ?>"
                         >
                     </div>
 
@@ -471,17 +476,6 @@ $registered   = isset($_GET['registered']) && $_GET['registered'] === '1';
                 </form>
 
                 <div class="divider">continue with</div>
-
-                <div class="google-login">
-                    <button type="button" class="google-btn" aria-label="Login dengan Google">
-                        <svg width="32" height="32" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                            <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303C33.655 32.91 29.251 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.94 3.043l5.657-5.657C33.95 6.053 29.227 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.652-.389-3.917z"/>
-                            <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 16.108 18.961 12 24 12c3.059 0 5.842 1.154 7.94 3.043l5.657-5.657C33.95 6.053 29.227 4 24 4c-7.732 0-14.415 4.36-17.694 10.691z"/>
-                            <path fill="#4CAF50" d="M24 44c5.1 0 9.729-1.953 13.267-5.142l-6.113-5.158C29.02 35.292 26.715 36 24 36c-5.231 0-9.625-3.072-11.286-7.436l-6.522 5.025C9.429 39.556 16.227 44 24 44z"/>
-                            <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.044 12.044 0 0 1-4.149 5.7l.003-.002 6.113 5.158C36.835 37.918 44 32 44 24c0-1.341-.138-2.652-.389-3.917z"/>
-                        </svg>
-                    </button>
-                </div>
 
                 <div class="signup">
                     Don't have an account?<a href="register.php?fresh=1">Register</a>

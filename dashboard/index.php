@@ -1,16 +1,23 @@
     <?php
-    session_start();
+        session_start();
+        require_once '../config/database.php';
 
-    // Cek apakah user sudah login
-    if (!isset($_SESSION['npm'])) {
+        if (!isset($_SESSION['npm'])) {
         header('Location: ../login.php');
         exit;
-    }
+        }   
 
-    $page_title = 'Home - Symptom Checker';
-    $npm = $_SESSION['npm'];
-    $nama_user = $_SESSION['nama_panggilan'] ?? $npm;
-    ?>
+        $npm = $_SESSION['npm'];
+        $id_mahasiswa = $_SESSION['id_mahasiswa'];
+
+        // Ambil nama dari database
+        $stmt = $pdo->prepare("SELECT nama FROM mahasiswa WHERE id_mahasiswa = ?");
+        $stmt->execute([$id_mahasiswa]);
+        $nama = $stmt->fetchColumn();
+
+        // Jika tidak ditemukan, fallback ke NPM
+        $nama = $nama ?: $npm;
+?>
     <!DOCTYPE html>
     <html lang="id">
     <head>
@@ -278,10 +285,9 @@
         <div class="breadcrumb"></div>
 
         <div class="greeting">
-            <h1>
-                Hello, <?= htmlspecialchars($nama_user); ?>!<br>
-                How do you feel today?
-            </h1>
+        <h1>Halo, <?= htmlspecialchars($nama, $npm); ?>! <br>
+            How are you feeling today?
+        </h1>
         </div>
 <div class="breadcrumb"></div>  
 

@@ -2,7 +2,20 @@
 // skrining/step.php
 session_start();
 
-if (!isset($_SESSION['npm'])) {
+/*
+|--------------------------------------------------------------------------
+| Cek login
+|--------------------------------------------------------------------------
+| Bisa dipakai untuk session lama (npm/id_mahasiswa)
+| maupun session baru (logged_in + role mahasiswa)
+|--------------------------------------------------------------------------
+*/
+$isMahasiswaLogin =
+    (isset($_SESSION['logged_in']) && ($_SESSION['role'] ?? '') === 'mahasiswa')
+    || isset($_SESSION['npm'])
+    || isset($_SESSION['id_mahasiswa']);
+
+if (!$isMahasiswaLogin) {
     header('Location: ../login.php');
     exit;
 }
@@ -14,33 +27,45 @@ if (!isset($_SESSION['jawaban']) || !is_array($_SESSION['jawaban'])) {
 }
 
 $per_page = 7;
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
 if ($page < 1) {
     $page = 1;
 }
 
-// Hitung total pertanyaan aktif
-$countStmt = $pdo->query("SELECT COUNT(*) AS total FROM variabel_skrining WHERE status_aktif = 1");
-$countData = $countStmt->fetch();
-$total_questions = (int)($countData['total'] ?? 0);
+/*
+|--------------------------------------------------------------------------
+| Hitung total pertanyaan aktif
+|--------------------------------------------------------------------------
+*/
+$countStmt = $pdo->query("
+    SELECT COUNT(*) AS total
+    FROM variabel_skrining
+    WHERE status_aktif = 1
+");
+$countData = $countStmt->fetch(PDO::FETCH_ASSOC);
+$total_questions = (int) ($countData['total'] ?? 0);
 
 if ($total_questions <= 0) {
     die('Tidak ada pertanyaan aktif pada tabel variabel_skrining.');
 }
 
-$total_pages = (int)ceil($total_questions / $per_page);
+$total_pages = (int) ceil($total_questions / $per_page);
 
 if ($page > $total_pages) {
     header('Location: process.php');
     exit;
 }
 
-// Simpan jawaban dari halaman ini
+/*
+|--------------------------------------------------------------------------
+| Simpan jawaban dari halaman ini
+|--------------------------------------------------------------------------
+*/
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['nilai']) && is_array($_POST['nilai'])) {
         foreach ($_POST['nilai'] as $id_variabel => $nilai) {
-            $id_variabel = (int)$id_variabel;
-            $nilai = (int)$nilai;
+            $id_variabel = trim((string) $id_variabel);
+            $nilai = (int) $nilai;
 
             if ($nilai >= 0 && $nilai <= 3) {
                 $_SESSION['jawaban'][$id_variabel] = $nilai;
@@ -58,33 +83,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
+/*
+|--------------------------------------------------------------------------
+| Ambil pertanyaan untuk halaman aktif
+|--------------------------------------------------------------------------
+| Schema baru menggunakan id_variabel dan id_subskala
+|--------------------------------------------------------------------------
+*/
 $offset = ($page - 1) * $per_page;
 
 $stmt = $pdo->prepare("
-    SELECT id_variabel, no_item, pertanyaan, subskala
-    FROM variabel_skrining
-    WHERE status_aktif = 1
-    ORDER BY urutan_tampil ASC
+    SELECT
+        v.id_variabel,
+        v.no_item,
+        v.pertanyaan,
+        v.id_subskala,
+        s.nama_id AS nama_subskala
+    FROM variabel_skrining v
+    JOIN subskala s ON s.id_subskala = v.id_subskala
+    WHERE v.status_aktif = 1
+    ORDER BY v.urutan_tampil ASC
     LIMIT :limit OFFSET :offset
 ");
 $stmt->bindValue(':limit', $per_page, PDO::PARAM_INT);
 $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $stmt->execute();
 
-$questions = $stmt->fetchAll();
+$questions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 if (!$questions) {
     header('Location: process.php');
     exit;
 }
 
+/*
+|--------------------------------------------------------------------------
+| Progress bar
+|--------------------------------------------------------------------------
+*/
 $progress = (($page - 1) / $total_pages) * 100;
 
+/*
+|--------------------------------------------------------------------------
+| Opsi jawaban DASS
+|--------------------------------------------------------------------------
+*/
 $options = [
-    0 => 'Tidak sesuai sama sekali',
-    1 => 'Sedikit sesuai',
-    2 => 'Cukup sesuai',
-    3 => 'Sangat sesuai'
+    0 => 'Tidak pernah',
+    1 => 'Kadang-kadang',
+    2 => 'Lumayan sering',
+    3 => 'Sering sekali'
 ];
 ?>
 <!DOCTYPE html>
@@ -338,9 +386,14 @@ $options = [
             <form method="post">
                 <div class="question-list">
                     <?php foreach ($questions as $q): ?>
+                        <?php
+                            $idVariabel = (string) $q['id_variabel'];
+                            $subskala   = htmlspecialchars($q['nama_subskala']);
+                            $checkedVal = $_SESSION['jawaban'][$idVariabel] ?? null;
+                        ?>
                         <div class="question-box">
                             <div class="question-head">
-                                No. <?= htmlspecialchars($q['no_item']); ?> | <?= strtoupper(htmlspecialchars($q['subskala'])); ?>
+                                No. <?= htmlspecialchars($q['no_item']); ?> | <?= strtoupper($subskala); ?>
                             </div>
 
                             <div class="question-text">
@@ -350,20 +403,19 @@ $options = [
                             <div class="options">
                                 <?php foreach ($options as $value => $label): ?>
                                     <?php
-                                        $input_id = 'q_' . $q['id_variabel'] . '_' . $value;
-                                        $checked = isset($_SESSION['jawaban'][$q['id_variabel']]) &&
-                                                   $_SESSION['jawaban'][$q['id_variabel']] == $value;
+                                        $input_id = 'q_' . $idVariabel . '_' . $value;
+                                        $checked = ($checkedVal !== null && (int)$checkedVal === $value);
                                     ?>
                                     <div class="option">
                                         <input
                                             type="radio"
-                                            id="<?= $input_id; ?>"
-                                            name="nilai[<?= $q['id_variabel']; ?>]"
+                                            id="<?= htmlspecialchars($input_id); ?>"
+                                            name="nilai[<?= htmlspecialchars($idVariabel); ?>]"
                                             value="<?= $value; ?>"
                                             <?= $checked ? 'checked' : ''; ?>
                                             required
                                         >
-                                        <label for="<?= $input_id; ?>" class="option-label">
+                                        <label for="<?= htmlspecialchars($input_id); ?>" class="option-label">
                                             <span class="score"><?= $value; ?></span>
                                             <span class="label-text"><?= htmlspecialchars($label); ?></span>
                                         </label>
