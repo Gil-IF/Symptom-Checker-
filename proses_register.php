@@ -1,61 +1,49 @@
 <?php
-// proses_register.php
-session_start();
-require_once 'config/database.php'; // PDO → $pdo, database: db_sc
+/**
+ * proses_register.php
+ *
+ * Hanya 3 tugas:
+ *   1. Ambil input POST
+ *   2. Panggil AuthController
+ *   3. Redirect sesuai hasil
+ *
+ * Semua logika (validasi, query, hash) ada di controllers/AuthController.php
+ */
 
-// Hanya terima POST
+session_start();
+require_once 'config/database.php';
+require_once 'controllers/AuthController.php';
+
+// Tolak selain POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: register.php');
     exit;
 }
 
-// ── Ambil & bersihkan input ───────────────────────────────
-$npm              = trim($_POST['npm']              ?? '');
-$password         = $_POST['password']              ?? '';
-$confirm_password = $_POST['confirm_password']      ?? '';
+// Ambil input — sesuai name di form register.php
+$npm     = trim($_POST['npm']              ?? '');
+$pw      =      $_POST['password']         ?? '';
+$confirm =      $_POST['confirm_password'] ?? '';
 
-// ── Validasi server-side ──────────────────────────────────
-if ($npm === '' || $password === '' || $confirm_password === '') {
-    header('Location: register.php?error=empty');
-    exit;
-}
-
-if (strlen($password) < 6) {
-    header('Location: register.php?error=short_pw&npm=' . urlencode($npm));
-    exit;
-}
-
-if ($password !== $confirm_password) {
-    header('Location: register.php?error=mismatch&npm=' . urlencode($npm));
-    exit;
-}
-
-// ── Cek NPM sudah terdaftar ───────────────────────────────
 try {
-    $cek = $pdo->prepare("SELECT npm FROM mahasiswa WHERE npm = :npm LIMIT 1");
-    $cek->execute([':npm' => $npm]);
+    $auth   = new AuthController($pdo);
+    $result = $auth->register($npm, $pw, $confirm);
 
-    if ($cek->fetch()) {
-        // NPM sudah ada
-        header('Location: register.php?error=exists&npm=' . urlencode($npm));
+    if (!$result['success']) {
+        // Kirim npm kembali agar field tidak kosong di form
+        $query = http_build_query([
+            'error' => $result['error'],
+            'npm'   => $result['npm'],
+        ]);
+        header('Location: register.php?' . $query);
         exit;
     }
 
-    // ── Hash password & simpan ────────────────────────────
-    $hashed = password_hash($password, PASSWORD_DEFAULT);
-
-    $stmt = $pdo->prepare("INSERT INTO mahasiswa (npm, password) VALUES (:npm, :password)");
-    $stmt->execute([
-        ':npm'      => $npm,
-        ':password' => $hashed,
-    ]);
-
-    // ── Berhasil → redirect ke login dengan pesan sukses ──
+    // Berhasil → ke login dengan notif sukses
     header('Location: login.php?registered=1');
     exit;
 
-} catch (PDOException $e) {
-    // Catat error di log server (jangan tampilkan ke user)
+} catch (Throwable $e) {
     error_log('Register error: ' . $e->getMessage());
     header('Location: register.php?error=server');
     exit;

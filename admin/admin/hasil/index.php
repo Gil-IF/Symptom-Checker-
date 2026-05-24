@@ -17,7 +17,7 @@ $filterStart = $_GET['start'] ?? date('Y-m-d', strtotime('-30 days'));
 $filterEnd   = $_GET['end']   ?? date('Y-m-d');
 
 try {
-    // Query dengan join + COALESCE untuk menghindari null
+    // Query dengan join untuk mendapatkan kategori per subskala
     $sql = "
         SELECT 
             s.id_skrining,
@@ -28,9 +28,9 @@ try {
             (s.skor_depresi + s.skor_anxiety + s.skor_stress) AS skor_total,
             m.npm,
             m.nama,
-            COALESCE(kd.nama_kategori, 'Tidak diketahui') AS kategori_depresi,
-            COALESCE(ka.nama_kategori, 'Tidak diketahui') AS kategori_anxiety,
-            COALESCE(ks.nama_kategori, 'Tidak diketahui') AS kategori_stress
+            kd.nama_kategori AS kategori_depresi,
+            ka.nama_kategori AS kategori_anxiety,
+            ks.nama_kategori AS kategori_stress
         FROM skrining s
         JOIN mahasiswa m ON m.id_mahasiswa = s.id_mahasiswa
         LEFT JOIN kategori_subskala kd 
@@ -52,34 +52,29 @@ try {
     die('Error: ' . $e->getMessage());
 }
 
-function getRiskLevel(?string $depresi, ?string $anxiety, ?string $stress): string
+// Fungsi menentukan risk level dari tiga kategori
+function getRiskLevel(string $depresi, string $anxiety, string $stress): string
 {
-    // Prioritas: Sangat Berat > Berat > Sedang > Ringan > Normal
-    $levels = [$depresi, $anxiety, $stress];
-
-    if (in_array('Sangat Berat', $levels)) {
-        return 'Sangat Berat';
+    $all = [$depresi, $anxiety, $stress];
+    $high   = false;
+    $medium = false;
+    foreach ($all as $kat) {
+        $k = strtolower($kat);
+        if (str_contains($k, 'berat')) $high = true;
+        elseif (str_contains($k, 'sedang')) $medium = true;
     }
-    if (in_array('Berat', $levels)) {
-        return 'Berat';
-    }
-    if (in_array('Sedang', $levels)) {
-        return 'Sedang';
-    }
-    if (in_array('Ringan', $levels)) {
-        return 'Ringan';
-    }
-    return 'Normal';
+    if ($high) return 'High Risk';
+    if ($medium) return 'Medium Risk';
+    return 'Low Risk';
 }
 
+// Fungsi untuk menentukan kelas badge
 function getRiskBadgeClass(string $risk): string
 {
     return match ($risk) {
-        'Sangat Berat' => 'badge-danger',
-        'Berat'        => 'badge-danger',
-        'Sedang'       => 'badge-warning',
-        'Ringan'       => 'badge-warning',
-        default        => 'badge-success'  // Normal
+        'High Risk'   => 'badge-danger',
+        'Medium Risk' => 'badge-warning',
+        default       => 'badge-success'
     };
 }
 ?>
@@ -92,7 +87,76 @@ function getRiskBadgeClass(string $risk): string
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../assets/css/hasil.css" />
+    <style>
+        /* --- CSS Global (sama dengan dashboard) --- */
+        :root{
+            --bg:#f3f3f5; --panel:#ffffff; --text:#2f3137; --muted:#7a7f87;
+            --shadow:0 10px 26px rgba(0,0,0,.08); --sidebar:#ffffff;
+            --accent:#cbb2e1; --blue:#6ea3d9; --danger:#ff7b7b;
+            --warn:#ffd36d; --success:#aee9cd; --line:#ececf1;
+        }
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text);}
+        a{text-decoration:none;color:inherit}
+        .layout{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+        .sidebar{
+            background:var(--sidebar); box-shadow:var(--shadow); padding:18px 16px;
+            position:sticky; top:0; height:100vh; display:flex; flex-direction:column; gap:18px;
+        }
+        .brand{display:flex; align-items:center; gap:12px; padding:6px 4px 14px;}
+        .brand img{width:44px;height:44px;object-fit:contain}
+        .brand .title{font-size:24px;font-weight:800;line-height:1}
+        .brand .sub{font-size:14px;line-height:1;color:#2f3137;opacity:.9}
+        .menu-label{font-size:12px;color:#a3a3a8;font-weight:700;letter-spacing:.08em;margin:4px 0 8px 6px}
+        .nav{display:flex;flex-direction:column;gap:8px}
+        .nav a{display:flex; align-items:center; gap:12px; padding:14px 14px; border-radius:16px; color:#262626; font-weight:600;}
+        .nav a.active,.nav a:hover{background:#efefef}
+        .nav .ico{width:22px;text-align:center;font-size:20px}
+        .sidebar-footer{margin-top:auto; display:flex; flex-direction:column; gap:10px}
+        .admin-box{background:#efefef; border-radius:18px; padding:12px 14px; display:flex; gap:12px; align-items:center;}
+        .avatar{width:38px;height:38px;border-radius:50%;background:#111;display:grid;place-items:center;color:#fff;font-weight:700}
+        .admin-meta{line-height:1.2}
+        .admin-meta .name{font-weight:700}
+        .admin-meta .role{font-size:12px;color:var(--muted)}
+        .logout{color:#e53935; font-weight:700; padding:10px 14px; border-radius:14px; display:flex; align-items:center; gap:12px;}
+        .logout:hover{background:#fff1f1}
+
+        .content{padding:22px 24px 28px}
+        .page-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px}
+        .page-header h1{font-size:28px; font-weight:700}
+
+        /* Filter */
+        .filter-form{display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:20px}
+        .filter-group{display:flex; flex-direction:column; gap:4px}
+        .filter-group label{font-size:12px; font-weight:600; color:var(--muted)}
+        .filter-group input{height:38px; padding:0 12px; border:1px solid #ddd; border-radius:8px; font-family:inherit}
+        .btn{padding:8px 16px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer; border:none; transition:.2s}
+        .btn-primary{background:var(--blue); color:#fff}
+        .btn-primary:hover{opacity:.9}
+        .btn-outline{background:#fff; border:1px solid #ddd; color:var(--text)}
+        .btn-outline:hover{background:#f5f5f5}
+        .btn-sm{padding:6px 12px; font-size:12px}
+
+        /* Tabel */
+        .table-wrapper{background:var(--panel); border-radius:20px; box-shadow:var(--shadow); padding:20px; overflow-x:auto}
+        table{width:100%; border-collapse:collapse}
+        th,td{padding:14px 12px; text-align:left; border-bottom:1px solid var(--line)}
+        th{font-weight:700; font-size:13px; color:var(--muted)}
+        td{font-size:14px}
+        .badge{display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700}
+        .badge-success{background:#daf6db; color:#207a2a}
+        .badge-warning{background:#fff0c2; color:#9a7100}
+        .badge-danger{background:#ffd8d8; color:#b42318}
+
+        @media (max-width: 1200px){
+            .layout{grid-template-columns:1fr}
+            .sidebar{position:relative;height:auto}
+        }
+        @media (max-width: 720px){
+            .content{padding:16px}
+            .page-header h1{font-size:22px}
+        }
+    </style>
 </head>
 <body>
 <div class="layout">
